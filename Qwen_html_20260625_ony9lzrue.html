@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring Lapangan SE2026 — Kota Banjarmasin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz@8..60&family=Inter:wght@400;500;600;700;800;900&display=swap');
+:root{
+--ink:#1a1a1a;
+--paper:#ffffff;
+--paper-soft:#f8f9fa;
+--paper-raised:#ffffff;
+--rule:#e8e8e8;
+--rule-soft:#f2f2f2;
+--accent:#2563eb;
+--accent-soft:#eff6ff;
+--good:#16a34a;
+--good-soft:#f0fdf4;
+--warn:#d97706;
+--warn-soft:#fffbeb;
+--info:#0891b2;
+--info-soft:#ecfeff;
+--muted:#6b7280;
+--mono: 'IBM Plex Mono', monospace;
+--serif: 'Source Serif 4', serif;
+--sans: 'Inter', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);min-height:100vh;}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 80px;}
+header.page{ padding:0 0 16px; margin-bottom:18px; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 8px; font-weight:500;}
+h1{ font-family:var(--serif); font-weight:700; font-size:clamp(22px,3vw,28px); line-height:1.15; margin:0 0 4px; letter-spacing:-.01em; color:var(--ink); }
+.sub{font-size:13px;color:var(--muted);margin:0;}
+
+.status-bar{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-bottom:16px; padding:10px 14px; background:var(--paper-soft); border:1px solid var(--rule-soft); border-radius:8px; }
+.status-dot{ width:8px;height:8px;border-radius:50%; background:var(--rule); flex-shrink:0; }
+.status-dot.ok{background:var(--good);}
+.status-dot.err{background:#dc2626;}
+.status-dot.loading{background:var(--warn);animation:pulse 1s infinite ease-in-out;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+#refreshBtn{ margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--muted); background:transparent; border:1px solid var(--rule); border-radius:6px; padding:4px 12px; cursor:pointer; transition:all .15s ease; }
+#refreshBtn:hover{border-color:var(--ink);color:var(--ink);background:#fff;}
+
+/* Dashboard Cards */
+.dashboard{ display:grid; grid-template-columns:repeat(6, 1fr); gap:14px; margin-bottom:22px; }
+@media (max-width:1024px){ .dashboard{grid-template-columns:repeat(3, 1fr);} }
+@media (max-width:600px){ .dashboard{grid-template-columns:repeat(2, 1fr); gap:10px;} }
+.dash-card{ background:#fff; border:1px solid var(--rule); border-radius:12px; padding:18px 16px 16px; position:relative; overflow:hidden; cursor:pointer; transition:all .2s ease; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.dash-card:hover{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.08); border-color:#d4d4d4; }
+.dash-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; }
+.dash-card.total::before{ background:#ef4444; }
+.dash-card.selatan::before{ background:#3b82f6; }
+.dash-card.timur::before{ background:#22c55e; }
+.dash-card.barat::before{ background:#f97316; }
+.dash-card.tengah::before{ background:#a855f7; }
+.dash-card.utara::before{ background:#14b8a6; }
+.dash-label{ font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.dash-value{ font-family:var(--sans); font-size:clamp(28px,4vw,36px); font-weight:900; color:var(--ink); line-height:1; margin-bottom:10px; letter-spacing:-.02em; }
+.dash-breakdown{ display:flex; gap:12px; font-size:11.5px; font-weight:600; margin-bottom:10px; }
+.dash-breakdown .utama{ color:var(--good); }
+.dash-breakdown .pgt{ color:#dc2626; }
+.dash-valid{ font-family:var(--mono); font-size:10.5px; color:var(--muted); background:var(--paper-soft); border:1px solid var(--rule-soft); border-radius:20px; padding:3px 10px; display:inline-block; }
+
+/* Sandbox */
+.sandbox{ background:var(--paper-raised); border:1px solid var(--rule); border-radius:10px; padding:20px 22px; margin-bottom:20px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+.lookup-label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin:0 0 10px; display:block; font-weight:500;}
+.lookup-row{display:flex;gap:10px;}
+#nipInput{ flex:1; font-family:var(--mono); font-size:16px; letter-spacing:.03em; padding:11px 14px; border:1.5px solid var(--rule); border-radius:8px; background:#fff; color:var(--ink); transition:border-color .15s ease; }
+#nipInput:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+#nipInput::placeholder{color:#a8a194;font-style:italic;}
+#nipInput:disabled{background:#fafafa;color:var(--muted);cursor:not-allowed;}
+#clearBtn{ font-family:var(--sans); font-size:13px; font-weight:600; color:var(--muted); background:#fff; border:1.5px solid var(--rule); border-radius:8px; padding:0 18px; cursor:pointer; transition:all .15s ease; }
+#clearBtn:hover{border-color:var(--ink);color:var(--ink);}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0;}
+.hint b{color:var(--ink);font-family:var(--mono);font-weight:500;}
+
+/* TF Sandbox Card */
+.tf-sandbox-card{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+.tf-sandbox-info{ flex:1; min-width:260px; }
+.tf-sandbox-info .tf-kec{ font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+.tf-sandbox-info .tf-name{ font-family:var(--serif); font-size:22px; font-weight:700; margin:4px 0 6px; color:var(--ink); }
+.tf-sandbox-info .tf-nip{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+.tf-sandbox-stats{ display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid var(--rule-soft); }
+.tf-sandbox-stat{ font-family:var(--mono); }
+.tf-sandbox-stat .num{ font-size:18px; font-weight:600; color:var(--ink); display:block; }
+.tf-sandbox-stat .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+.tf-sandbox-stat .num.good{ color:var(--good); }
+.tf-sandbox-stat .num.info{ color:var(--info); }
+.tf-sandbox-stat .num.accent{ color:var(--accent); }
+
+#backBtn{ font-family:var(--sans); font-size:12px; font-weight:600; color:var(--muted); background:#fff; border:1.5px solid var(--rule); border-radius:8px; padding:8px 14px; cursor:pointer; transition:all .15s ease; display:flex; align-items:center; gap:6px; }
+#backBtn:hover{ border-color:var(--ink); color:var(--ink); }
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-state .glyph{font-family:var(--mono);font-size:24px;color:var(--rule);margin-bottom:8px;display:block;}
+.empty-state p{margin:4px 0;font-size:13px;}
+
+.not-found, .load-error{ background:var(--warn-soft); border:1px solid #fcd34d; color:#92400e; padding:14px 18px; border-radius:8px; font-size:13px; font-family:var(--mono); }
+.load-error{background:#fef2f2;border-color:#fca5a5;color:#991b1b;}
+
+.tf-header{background:var(--ink);color:#fff;border-radius:10px 10px 0 0;padding:20px 24px;}
+.tf-id{font-family:var(--mono);font-size:11px;color:#9ca3af;letter-spacing:.06em;}
+.tf-name{font-family:var(--serif);font-size:22px;font-weight:700;margin:4px 0 0;}
+.tf-stats{display:flex;gap:24px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);flex-wrap:wrap;}
+.tf-stats .stat .num{color:#fff;}
+.tf-stats .stat .lbl{color:#9ca3af;}
+.stat{font-family:var(--mono);}
+.stat .num{font-size:18px;font-weight:600;color:var(--ink);display:block;}
+.stat .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+
+.pml-list{background:var(--paper-raised);border:1px solid var(--rule);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;}
+.pml-card{border-bottom:1px solid var(--rule);cursor:pointer;user-select:none;}
+.pml-card:last-child{border-bottom:none;}
+.pml-card-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;transition:background .15s ease;}
+.pml-card-top:hover{background:var(--paper-soft);}
+.pml-card.open .pml-card-top{background:var(--good-soft);}
+.pml-name-block .pml-name{font-family:var(--serif);font-size:16px;font-weight:700;margin:0;}
+.pml-name-block .pml-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+.pml-name-block .pml-meta span{margin-right:12px;}
+.pml-name-block .pml-meta b{color:var(--ink);font-weight:600;}
+.pml-mini-stats{display:flex;gap:18px;flex-shrink:0;}
+.mini-stat{font-family:var(--mono);text-align:right;}
+.mini-stat .num{font-size:15px;font-weight:600;color:var(--ink);display:block;}
+.mini-stat .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.chevron{ font-family:var(--mono);font-size:12px;color:var(--muted); background:#fff;border:1px solid var(--rule);border-radius:50%; width:24px;height:24px;display:flex;align-items:center;justify-content:center; flex-shrink:0;transition:transform .2s ease; }
+.pml-card.open .chevron{transform:rotate(180deg);}
+.detail-wrap{max-height:0;overflow:hidden;transition:max-height .28s ease;}
+.detail-wrap.open{max-height:5000px;}
+.detail-inner{padding:0 24px 18px;}
+
+table.ppl-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.ppl-table caption{text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:10px 0 8px;}
+table.ppl-table thead th{text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1.5px solid var(--ink);padding:7px 8px;white-space:nowrap;}
+table.ppl-table thead th.num{text-align:right;}
+table.ppl-table tbody td{padding:9px 8px;border-bottom:1px solid var(--rule-soft);}
+table.ppl-table tbody td.num{text-align:right;font-family:var(--mono);font-size:12px;}
+table.ppl-table tbody tr:hover{background:var(--paper-soft);}
+.pct-bar-cell{display:flex;align-items:center;gap:7px;justify-content:flex-end;}
+.pct-track{width:40px;height:5px;background:var(--rule-soft);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.pct-fill{height:100%;background:var(--good);}
+.pct-fill.low{background:var(--warn);}
+.pct-fill.info{background:var(--info);}
+
+footer.page{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.03em;}
+
+@media (max-width:600px){
+.pml-card-top{flex-direction:column;align-items:flex-start;gap:10px;}
+.pml-mini-stats{gap:14px;}
+.tf-stats{flex-wrap:wrap;gap:14px;}
+table.ppl-table{font-size:11px;}
+.lookup-row{flex-direction:column;}
+.sandbox{padding:18px 16px;}
+.tf-sandbox-card{flex-direction:column;}
+}
+
+.update-badge{ display:inline-block; font-family:var(--mono); font-size:10px; color:#1e40af; background:var(--accent-soft); border:1px solid #bfdbfe; border-radius:4px; padding:1px 7px; margin-left:8px; vertical-align:middle; white-space:nowrap; }
+.update-badge.tf-badge{ color:#fff; background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); }
+.update-badge.pml-badge{ color:#1e40af; background:var(--accent-soft); border-color:#bfdbfe; }
+.update-badge.ppl-badge{ color:#166534; background:var(--good-soft); border-color:#bbf7d0; }
+
+.ppl-row-expandable { cursor: pointer; user-select: none; transition: background .15s ease; }
+.ppl-row-expandable:hover { background: var(--paper-soft); }
+.ppl-row-expandable.open { background: var(--good-soft); }
+.chevron-small { display: inline-block; font-family: var(--mono); font-size: 10px; color: var(--muted); margin-right: 6px; transition: transform .2s ease; vertical-align: middle; }
+.ppl-row-expandable.open .chevron-small { transform: rotate(180deg); }
+
+.idsubsls-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 8px 0; }
+.idsubsls-table thead th { padding: 7px 8px; text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--rule); background: var(--paper-soft); white-space: nowrap; }
+.idsubsls-table thead th.num { text-align: right; }
+.idsubsls-table tbody td { padding: 7px 8px; border-bottom: 1px solid var(--rule-soft); font-size: 11.5px; }
+.idsubsls-table tbody td.num { text-align: right; font-family: var(--mono); font-size: 11px; }
+.idsubsls-table tbody tr:hover { background: var(--paper-soft); }
+
+.gc-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-family: var(--mono); font-size: 11px; font-weight: 600; text-align: center; min-width: 24px; }
+.gc-badge.gc-1 { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
+.gc-badge.gc-0 { background: #f4f4f5; color: var(--muted); border: 1px solid #e4e4e7; }
+
+.section-title { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="page">
+<p class="eyebrow">Sensus Ekonomi 2026</p>
+<h1>Monitoring Lapangan SE2026 Kota Banjarmasin</h1>
+<p class="sub" id="headerSub">Dashboard overview per kecamatan. Masukkan NIP Task Force untuk melihat detail.</p>
+</header>
+
+<div class="status-bar">
+<span class="status-dot loading" id="statusDot"></span>
+<span id="statusText">Memuat data terbaru…</span>
+<button id="refreshBtn" type="button">↻ Refresh</button>
+</div>
+
+<div id="dashboardArea"></div>
+
+<div class="sandbox" id="sandboxArea">
+<div id="sandboxLookup">
+<label class="lookup-label" for="nipInput">Masukkan NIP Task Force</label>
+<div class="lookup-row">
+<input id="nipInput" type="text" inputmode="numeric" placeholder="Ketik atau tempel NIP, contoh: 340062842" autocomplete="off" disabled>
+<button id="clearBtn" type="button">Bersihkan</button>
+</div>
+<p class="hint" id="hintText">Memuat daftar Task Force…</p>
+</div>
+<div id="sandboxTF" class="hidden"></div>
+</div>
+
+<div id="resultArea"></div>
+
+<footer class="page">
+DATA SUMBER: PROGRESS PPL · SE2026 — DIAMBIL LANGSUNG DARI GOOGLE SHEETS SAAT HALAMAN DIBUKA
+</footer>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=2111234947&single=true&output=csv";
+const NIP_MAP = {"340019495":"M.TAUFIK R","132311851":"IMA","340015186":"NURUDDIN ZAIN","340015557":"SYAKERANI","340050198":"PRATIWI","340055352":"NOORHAMIMAH","340056117":"FARIDA AMINA","340016618":"DWI SETYO MAYLENA","340056874":"RAISA NOOR MAULIDA","340018139":"JUNAIDI EFENDI","340018823":"M.IQBAL","340055342":"DANY THERESA","340057558":"RISKA FINA AYUNINDA","340058750":"GHITA","340060168":"KHALISTA","340061619":"ADIMA LULUATUN","340063514":"SALMA AFNA H. H","340066120":"ANNISA","340066397":"NASYWA","340012390":"AL AMIN","340065201":"IMRON","340052140":"IRWAN","340065025":"SAFWAN","340016619":"JULIANA ADMAKA","340019091":"LISDA FITRIAWATI","340062842":"HENDRA"};
+const STORAGE_KEY = 'se2026_nip_terakhir';
+
+let DATA = [];
+let gcMap = {};
+let SHEET_TIMESTAMP = null;
+let CURRENT_NIP = null;
+let CURRENT_TF_NAME = null;
+
+const elInput = document.getElementById('nipInput');
+const elResult = document.getElementById('resultArea');
+const elDashboard = document.getElementById('dashboardArea');
+const elSandboxLookup = document.getElementById('sandboxLookup');
+const elSandboxTF = document.getElementById('sandboxTF');
+const elHeaderSub = document.getElementById('headerSub');
+const elClear = document.getElementById('clearBtn');
+const elHint = document.getElementById('hintText');
+const elStatusDot = document.getElementById('statusDot');
+const elStatusText = document.getElementById('statusText');
+const elRefreshBtn = document.getElementById('refreshBtn');
+
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{maximumFractionDigits:0}); }
+function fmtDec(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+'%'; }
+function escapeHtml(str){ if(str===null||str===undefined) return ''; return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toNum(s){
+  if (s===undefined||s===null) return null;
+  s = String(s).trim();
+  if (s === '') return null;
+  if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  else if (/^\d{1,3}(\.\d{3})+,\d+$/.test(s)) s = s.replace(/\./g, '').replace(/,/g, '.');
+  else if (s.includes(',') && !s.includes('.')) s = s.replace(/,/g, '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i=0; i<text.length; i++){
+    const ch = text[i];
+    if (inQuotes){
+      if (ch === '"'){
+        if (text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else { field += ch; }
+    } else {
+      if (ch === '"'){ inQuotes = true; }
+      else if (ch === ','){ row.push(field); field=''; }
+      else if (ch === '\r'){ }
+      else if (ch === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else { field += ch; }
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function parseTimestamp(str){
+  if (!str) return null;
+  str = String(str).trim();
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  let m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) {
+    let day = parseInt(m[1], 10);
+    let month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    let hour = parseInt(m[4], 10);
+    let min = parseInt(m[5], 10);
+    let sec = m[6] ? parseInt(m[6], 10) : 0;
+    d = new Date(year, month, day, hour, min, sec);
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    let day = parseInt(m[1], 10);
+    let month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function getTimeText(date){
+  if (!date) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'baru saja';
+  else if (diffMins < 60) return diffMins + ' menit lalu';
+  else if (diffHours < 24) return diffHours + ' jam lalu';
+  else return diffDays + ' hari lalu';
+}
+
+function getFullDate(date){
+  if (!date) return '';
+  return date.toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function setStatus(state, text){
+  elStatusDot.className = 'status-dot ' + state;
+  if (SHEET_TIMESTAMP && state === 'ok') {
+    elStatusText.textContent = text + " · " + getFullDate(SHEET_TIMESTAMP);
+  } else {
+    elStatusText.textContent = text;
+  }
+}
+
+function getUpdateBadge(type='default'){
+  if (!SHEET_TIMESTAMP) return '';
+  const timeText = getTimeText(SHEET_TIMESTAMP);
+  const fullDate = getFullDate(SHEET_TIMESTAMP);
+  const typeClass = type === 'tf' ? 'tf-badge' : type === 'pml' ? 'pml-badge' : type === 'ppl' ? 'ppl-badge' : '';
+  return `<span class="update-badge ${typeClass}" title="Data diperbarui: ${fullDate}">diperbarui ${timeText}</span>`;
+}
+
+function refreshUpdateBadges() {
+  if (!SHEET_TIMESTAMP) return;
+  const timeText = getTimeText(SHEET_TIMESTAMP);
+  const fullDate = getFullDate(SHEET_TIMESTAMP);
+  document.querySelectorAll('.update-badge').forEach(badge => {
+    badge.textContent = 'diperbarui ' + timeText;
+    badge.title = 'Data diperbarui: ' + fullDate;
+  });
+  if (elStatusDot.classList.contains('ok')) {
+    elStatusText.textContent = 'Data termuat · ' +
+      DATA.length.toLocaleString('id-ID') + ' baris PPL · ' +
+      getFullDate(SHEET_TIMESTAMP);
+  }
+}
+
+setInterval(refreshUpdateBadges, 30000);
+
+const KEC_CLASS = {
+  'BJM SELATAN': 'selatan',
+  'BJM TIMUR': 'timur',
+  'BJM BARAT': 'barat',
+  'BJM TENGAH': 'tengah',
+  'BJM UTARA': 'utara'
+};
+
+function renderDashboard(){
+  if (DATA.length === 0) {
+    elDashboard.innerHTML = '';
+    return;
+  }
+
+  const kecAgg = {};
+  DATA.forEach(r => {
+    const kec = r.kec.trim().toUpperCase();
+    if (!kecAgg[kec]) {
+      kecAgg[kec] = { target: 0, kirim: 0, draft: 0, count: 0 };
+    }
+    kecAgg[kec].target += (r.target || 0);
+    kecAgg[kec].kirim += (r.kirim || 0);
+    kecAgg[kec].draft += (r.draft || 0);
+    kecAgg[kec].count += 1;
+  });
+
+  const totalTarget = Object.values(kecAgg).reduce((s, v) => s + v.target, 0);
+  const totalKirim = Object.values(kecAgg).reduce((s, v) => s + v.kirim, 0);
+  const totalDraft = Object.values(kecAgg).reduce((s, v) => s + v.draft, 0);
+  const totalCount = Object.values(kecAgg).reduce((s, v) => s + v.count, 0);
+
+  let cardsHtml = '';
+  cardsHtml += `<div class="dash-card total" onclick="scrollToInput()">
+    <div class="dash-label">Total Kota</div>
+    <div class="dash-value">${fmt(totalTarget)}</div>
+    <div class="dash-breakdown">
+      <span class="utama">${fmt(totalKirim)} Utama</span>
+      <span class="pgt">${fmt(totalDraft)} Pgt</span>
+    </div>
+    <div class="dash-valid">${fmt(totalCount)} Baris Valid</div>
+  </div>`;
+
+  const kecOrder = ['BJM SELATAN', 'BJM TIMUR', 'BJM BARAT', 'BJM TENGAH', 'BJM UTARA'];
+  kecOrder.forEach(kec => {
+    const agg = kecAgg[kec];
+    if (!agg) return;
+    const classMap = KEC_CLASS[kec] || '';
+    cardsHtml += `<div class="dash-card ${classMap}" onclick="scrollToInput()">
+      <div class="dash-label">${kec}</div>
+      <div class="dash-value">${fmt(agg.target)}</div>
+      <div class="dash-breakdown">
+        <span class="utama">${fmt(agg.kirim)} Utama</span>
+        <span class="pgt">${fmt(agg.draft)} Pgt</span>
+      </div>
+      <div class="dash-valid">${fmt(agg.count)} Baris Valid</div>
+    </div>`;
+  });
+
+  elDashboard.innerHTML = '<p class="section-title">Overview per Kecamatan</p><div class="dashboard">' + cardsHtml + '</div>';
+}
+
+function scrollToInput(){
+  elInput.focus();
+  elInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function showTFMode(nip, tfName, teamRows){
+  CURRENT_NIP = nip;
+  CURRENT_TF_NAME = tfName;
+  elDashboard.classList.add('hidden');
+  elSandboxLookup.classList.add('hidden');
+  elSandboxTF.classList.remove('hidden');
+  elHeaderSub.textContent = 'Detail Task Force: ' + tfName;
+
+  const kec = teamRows[0].kec;
+  const totalTarget = teamRows.reduce((s,r)=> s + (r.target||0), 0);
+  const totalKirim = teamRows.reduce((s,r)=> s + (r.kirim||0), 0);
+  const totalDraft = teamRows.reduce((s,r)=> s + (r.draft||0), 0);
+  const totalProgress = totalKirim + totalDraft;
+  const avgPersen = totalTarget > 0 ? (totalProgress / totalTarget * 100) : 0;
+  const pmlGroups = {};
+  teamRows.forEach(r => { (pmlGroups[r.pml] = pmlGroups[r.pml] || []).push(r); });
+
+  elSandboxTF.innerHTML = `
+    <div class="tf-sandbox-card">
+      <div class="tf-sandbox-info">
+        <div class="tf-kec">${escapeHtml(kec)} · ${getUpdateBadge('tf')}</div>
+        <div class="tf-name">${escapeHtml(tfName.trim())}</div>
+        <div class="tf-nip">NIP: ${escapeHtml(nip)}</div>
+      </div>
+      <button id="backBtn" type="button">← Kembali</button>
+    </div>
+    <div class="tf-sandbox-stats">
+      <div class="tf-sandbox-stat"><span class="num">${Object.keys(pmlGroups).length}</span><span class="lbl">PML</span></div>
+      <div class="tf-sandbox-stat"><span class="num">${teamRows.length}</span><span class="lbl">Total PPL</span></div>
+      <div class="tf-sandbox-stat"><span class="num">${fmt(totalTarget)}</span><span class="lbl">Target</span></div>
+      <div class="tf-sandbox-stat"><span class="num good">${fmt(totalKirim)}</span><span class="lbl">Dikirim</span></div>
+      <div class="tf-sandbox-stat"><span class="num info">${fmt(totalDraft)}</span><span class="lbl">Draft</span></div>
+      <div class="tf-sandbox-stat"><span class="num accent">${fmtPct(avgPersen)}</span><span class="lbl">Progress (G+H)/F</span></div>
+    </div>
+  `;
+
+  document.getElementById('backBtn').addEventListener('click', () => {
+    showDashboardMode();
+  });
+}
+
+function showDashboardMode(){
+  CURRENT_NIP = null;
+  CURRENT_TF_NAME = null;
+  elDashboard.classList.remove('hidden');
+  elSandboxLookup.classList.remove('hidden');
+  elSandboxTF.classList.add('hidden');
+  elHeaderSub.textContent = 'Dashboard overview per kecamatan. Masukkan NIP Task Force untuk melihat detail.';
+  elInput.value = '';
+  elInput.focus();
+  elResult.innerHTML = '';
+  saveNip('');
+}
+
+async function loadData(){
+  setStatus('loading', 'Memuat data terbaru…');
+  elInput.disabled = true;
+  try{
+    const res = await fetch(CSV_URL + '&_=' + Date.now(), {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const grid = parseCSV(text);
+
+    if (grid.length > 0 && grid[0].length > 0) {
+      const a1Value = String(grid[0][0] || '').trim();
+      const parsed = parseTimestamp(a1Value);
+      if (parsed) {
+        SHEET_TIMESTAMP = parsed;
+        console.log('✅ Timestamp dari A1:', a1Value, '→', parsed.toLocaleString('id-ID'));
+      } else {
+        console.warn('⚠️ A1 tidak bisa diparse sebagai timestamp:', a1Value);
+        SHEET_TIMESTAMP = null;
+      }
+    }
+
+    let headerRowIdx = grid.findIndex(r => (r[0]||'').trim().toLowerCase() === 'kecamatan');
+    if (headerRowIdx === -1) headerRowIdx = 1;
+    const header = grid[headerRowIdx] || [];
+
+    let idxIdsub = 42;
+    let idxGC = 53;
+    header.forEach((h, i) => {
+      const hn = String(h||'').trim().toLowerCase();
+      if (hn.includes('idsub') || hn.includes('id sub')) idxIdsub = i;
+      if (hn.includes('ket gc') || hn.includes('ket.gc') || hn === 'gc') idxGC = i;
+    });
+
+    const rows = [];
+    const gcMapLocal = {};
+
+    for (let r = headerRowIdx+1; r < grid.length; r++){
+      const cols = grid[r];
+      if (!cols || cols.length < 5) continue;
+      const kec = (cols[0]||'').trim();
+      const tf = (cols[1]||'').trim();
+      const pml = (cols[2]||'').trim();
+      const ppl = (cols[4]||'').trim();
+      const idsubsls = cols.length > idxIdsub ? String(cols[idxIdsub] || '').trim() : '';
+      const ketGC = cols.length > idxGC ? String(cols[idxGC] || '').trim() : '';
+
+      if (!pml || !ppl) continue;
+      if (/total/i.test(pml)) continue;
+
+      if (idsubsls && idsubsls.toLowerCase() !== 'idsubsls') {
+        gcMapLocal[idsubsls] = ketGC;
+      }
+
+      rows.push({
+        kec, tf, pml, ppl, idsubsls,
+        target: toNum(cols[5]),
+        kirim: toNum(cols[6]),
+        draft: toNum(cols[7]),
+        rata: toNum(cols[8]),
+        persen: toNum(cols[9]),
+      });
+    }
+
+    if (rows.length === 0) throw new Error('Data kosong setelah parsing');
+    DATA = rows;
+    gcMap = gcMapLocal;
+
+    setStatus('ok', DATA.length.toLocaleString('id-ID') + ' baris PPL · ' + Object.keys(gcMap).length + ' ID SUBSLS');
+
+    renderDashboard();
+
+    elInput.disabled = false;
+    elHint.innerHTML = 'Total <b>' + Object.keys(NIP_MAP).length.toLocaleString('id-ID') + '</b> Task Force terdaftar.';
+
+    const savedNip = loadSavedNip();
+    if (savedNip && NIP_MAP[savedNip]){
+      elInput.value = savedNip;
+      doSearch();
+    } else {
+      showDashboardMode();
+    }
+  }catch(err){
+    setStatus('err', 'Gagal memuat data');
+    elResult.innerHTML = '<div class="load-error">Gagal mengambil data: ' + escapeHtml(err.message) + '</div>';
+  }
+}
+
+function renderNotFound(nip){
+  elResult.innerHTML = '<div class="sandbox not-found">NIP "' + escapeHtml(nip) + '" tidak ditemukan.</div>';
+}
+
+function renderResult(nip, tfName){
+  const tfNameNorm = tfName.trim();
+  const teamRows = DATA.filter(r => r.tf.trim().toUpperCase() === tfNameNorm.toUpperCase());
+  if (teamRows.length === 0){
+    elResult.innerHTML = '<div class="sandbox not-found">Task Force tidak ada datanya.</div>';
+    return;
+  }
+
+  // Tampilkan sandbox mode TF
+  showTFMode(nip, tfName, teamRows);
+
+  const kec = teamRows[0].kec;
+  const totalTarget = teamRows.reduce((s,r)=> s + (r.target||0), 0);
+  const totalKirim = teamRows.reduce((s,r)=> s + (r.kirim||0), 0);
+  const totalDraft = teamRows.reduce((s,r)=> s + (r.draft||0), 0);
+  const totalProgress = totalKirim + totalDraft;
+  const avgPersen = totalTarget > 0 ? (totalProgress / totalTarget * 100) : 0;
+
+  const pmlGroups = {};
+  teamRows.forEach(r => { (pmlGroups[r.pml] = pmlGroups[r.pml] || []).push(r); });
+
+  const pmlCardsHtml = Object.entries(pmlGroups).map(([pmlName, pplRows], idx) => {
+    const pmlTarget = pplRows.reduce((s,r)=> s + (r.target||0), 0);
+    const pmlKirim = pplRows.reduce((s,r)=> s + (r.kirim||0), 0);
+    const pmlDraft = pplRows.reduce((s,r)=> s + (r.draft||0), 0);
+    const pmlProgress = pmlKirim + pmlDraft;
+    const pmlPersen = pmlTarget > 0 ? (pmlProgress / pmlTarget * 100) : 0;
+
+    const pplGroups = {};
+    pplRows.forEach(r => {
+      if (!pplGroups[r.ppl]) pplGroups[r.ppl] = [];
+      pplGroups[r.ppl].push(r);
+    });
+
+    const rowsHtml = Object.entries(pplGroups).map(([pplName, idsubRows]) => {
+      const pplTarget = idsubRows.reduce((s,r) => s + (r.target||0), 0);
+      const pplKirim = idsubRows.reduce((s,r) => s + (r.kirim||0), 0);
+      const pplDraft = idsubRows.reduce((s,r) => s + (r.draft||0), 0);
+      const pplRata = idsubRows.reduce((s,r) => s + (r.rata||0), 0);
+      const pplProgress = pplKirim + pplDraft;
+      const pplPct = pplTarget > 0 ? (pplProgress / pplTarget * 100) : 0;
+      const pctClass = pplPct < 2 ? 'low' : '';
+
+      const idsubRowsHtml = idsubRows.map(r => {
+        const pct = r.target > 0 ? ((r.kirim + r.draft) / r.target * 100) : 0;
+        const pctClassSub = pct < 2 ? 'low' : '';
+        let gcKeterangan = '<span style="color:#aaa;">-</span>';
+        const lookupKey = String(r.idsubsls || '').trim();
+        const gcVal = gcMap[lookupKey] !== undefined ? String(gcMap[lookupKey]).trim() : '';
+        if (gcVal === '1') {
+          gcKeterangan = '<span class="gc-badge gc-1">1</span>';
+        } else if (gcVal === '0') {
+          gcKeterangan = '<span class="gc-badge gc-0">0</span>';
+        } else if (gcVal !== '') {
+          gcKeterangan = escapeHtml(gcVal);
+        }
+        return '<tr><td>' + escapeHtml(r.idsubsls) + '</td><td>' + gcKeterangan + '</td><td class="num">' + fmt(r.target) + '</td><td class="num">' + fmt(r.kirim) + '</td><td class="num">' + fmt(r.draft) + '</td><td class="num">' + fmtDec(r.rata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassSub + '" style="width:' + Math.min(pct,100) + '%"></span></span></div></td></tr>';
+      }).join('');
+
+      return '<tr class="ppl-row-expandable"><td><span class="chevron-small">▾</span> ' + escapeHtml(pplName) + ' ' + getUpdateBadge('ppl') + '</td><td class="num">' + fmt(pplTarget) + '</td><td class="num">' + fmt(pplKirim) + '</td><td class="num">' + fmt(pplDraft) + '</td><td class="num">' + fmtDec(pplRata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pplPct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClass + '" style="width:' + Math.min(pplPct,100) + '%"></span></span></div></td></tr><tr class="ppl-detail-row" style="display:none;"><td colspan="6" style="padding: 0 12px 12px 12px; background: #fafafa;"><table class="idsubsls-table"><thead><tr><th>ID SUBSLS</th><th>Ket. GC</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Persentase</th></tr></thead><tbody>' + idsubRowsHtml + '</tbody></table></td></tr>';
+    }).join('');
+
+    return '<div class="pml-card" data-idx="' + idx + '"><div class="pml-card-top"><div class="pml-name-block"><p class="pml-name">' + escapeHtml(pmlName) + ' ' + getUpdateBadge('pml') + '</p><div class="pml-meta"><span><b>' + Object.keys(pplGroups).length + '</b> PPL</span><span>Progress: <b style="color:var(--info);">' + fmtPct(pmlPersen) + '</b></span></div></div><div class="pml-mini-stats"><div class="mini-stat"><span class="num">' + fmt(pmlTarget) + '</span><span class="lbl">Target</span></div><div class="mini-stat"><span class="num" style="color:var(--good);">' + fmt(pmlKirim) + '</span><span class="lbl">Dikirim</span></div><div class="mini-stat"><span class="num" style="color:var(--info);">' + fmt(pmlDraft) + '</span><span class="lbl">Draft</span></div></div><div class="chevron">▾</div></div><div class="detail-wrap"><div class="detail-inner"><table class="ppl-table"><caption>Seluruh PPL di bawah ' + escapeHtml(pmlName) + '</caption><thead><tr><th>PPL</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Persentase</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div></div></div>';
+  }).join('');
+
+  elResult.innerHTML = '<div class="tf-header"><div class="tf-id">' + escapeHtml(kec) + ' · NIP ' + escapeHtml(nip) + '</div><p class="tf-name">' + escapeHtml(tfNameNorm) + ' ' + getUpdateBadge('tf') + '</p><div class="tf-stats"><div class="stat"><span class="num">' + Object.keys(pmlGroups).length + '</span><span class="lbl">PML</span></div><div class="stat"><span class="num">' + teamRows.length + '</span><span class="lbl">Total PPL</span></div><div class="stat"><span class="num">' + fmt(totalTarget) + '</span><span class="lbl">Target</span></div><div class="stat"><span class="num" style="color:var(--good);">' + fmt(totalKirim) + '</span><span class="lbl">Dikirim</span></div><div class="stat"><span class="num" style="color:var(--info);">' + fmt(totalDraft) + '</span><span class="lbl">Draft</span></div><div class="stat"><span class="num" style="color:var(--info);">' + fmtPct(avgPersen) + '</span><span class="lbl">Progress</span></div></div></div><div class="pml-list">' + pmlCardsHtml + '</div>';
+
+  document.querySelectorAll('.pml-card').forEach(card => {
+    const top = card.querySelector('.pml-card-top');
+    const detail = card.querySelector('.detail-wrap');
+    top.addEventListener('click', () => {
+      const isOpen = card.classList.toggle('open');
+      detail.classList.toggle('open', isOpen);
+    });
+  });
+  document.querySelectorAll('.ppl-row-expandable').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const detailRow = row.nextElementSibling;
+      if (detailRow && detailRow.classList.contains('ppl-detail-row')) {
+        const isHidden = detailRow.style.display === 'none';
+        detailRow.style.display = isHidden ? 'table-row' : 'none';
+        row.classList.toggle('open', isHidden);
+      }
+    });
+  });
+  refreshUpdateBadges();
+}
+
+function doSearch(){
+  const raw = elInput.value.trim();
+  if (!raw){ 
+    if (CURRENT_NIP) showDashboardMode();
+    return; 
+  }
+  const tfName = NIP_MAP[raw];
+  if (!tfName){ 
+    renderNotFound(raw); 
+    return; 
+  }
+  renderResult(raw, tfName);
+}
+
+function saveNip(nip){
+  try{ if (nip){ localStorage.setItem(STORAGE_KEY, nip); } else { localStorage.removeItem(STORAGE_KEY); } }catch(e){}
+}
+function loadSavedNip(){
+  try{ return localStorage.getItem(STORAGE_KEY) || ''; }catch(e){ return ''; }
+}
+
+elInput.addEventListener('input', () => { doSearch(); saveNip(elInput.value.trim()); });
+elClear.addEventListener('click', () => { showDashboardMode(); });
+elRefreshBtn.addEventListener('click', () => { loadData(); });
+
+loadData();
+</script>
+</body>
+</html>
