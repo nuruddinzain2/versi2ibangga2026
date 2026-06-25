@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring Lapangan SE2026 — Kota Banjarmasin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz@8..60&family=Inter:wght@400;500;600;700&display=swap');
+:root{
+--ink:#1a1a1a;
+--paper:#ffffff;
+--paper-soft:#fafafa;
+--paper-raised:#ffffff;
+--rule:#e8e8e8;
+--rule-soft:#f2f2f2;
+--accent:#2563eb;
+--accent-soft:#eff6ff;
+--good:#16a34a;
+--good-soft:#f0fdf4;
+--warn:#d97706;
+--warn-soft:#fffbeb;
+--info:#0891b2;
+--info-soft:#ecfeff;
+--muted:#6b7280;
+--mono: 'IBM Plex Mono', monospace;
+--serif: 'Source Serif 4', serif;
+--sans: 'Inter', sans-serif;
+--bg-deep:#0a1840;
+--bg-deep-2:#0f2257;
+--bg-glow:#1e3a8a;
+}
+*{box-sizing:border-box;}
+html,body{
+margin:0;padding:0;color:var(--ink);font-family:var(--sans);min-height:100vh;
+background:
+  radial-gradient(circle at 14% 8%, rgba(59,93,209,.35), transparent 42%),
+  radial-gradient(circle at 88% 92%, rgba(30,58,138,.45), transparent 48%),
+  linear-gradient(165deg, var(--bg-deep-2) 0%, var(--bg-deep) 55%, #060f30 100%);
+background-attachment:fixed;
+}
+@media (prefers-reduced-motion: no-preference){
+html,body{ animation:bgDrift 26s ease-in-out infinite; background-size:140% 140%; }
+}
+@keyframes bgDrift{
+0%{background-position:0% 0%, 100% 100%, 0% 0%;}
+50%{background-position:8% 6%, 92% 94%, 4% 2%;}
+100%{background-position:0% 0%, 100% 100%, 0% 0%;}
+}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 80px;}
+header.page{ padding:0 0 18px; margin-bottom:22px; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#93c5fd; margin:0 0 10px; font-weight:500;}
+h1{ font-family:var(--serif); font-weight:700; font-size:clamp(24px,3.5vw,32px); line-height:1.15; margin:0 0 6px; letter-spacing:-.01em; color:#ffffff; }
+.sub{font-size:13.5px;color:#aebfe6;margin:0;}
+
+.sandbox{
+position:relative;
+background:var(--paper-raised);
+border:1px solid var(--rule);
+border-radius:14px;
+padding:22px 24px;
+margin-bottom:20px;
+box-shadow:0 1px 2px rgba(0,0,0,.03), 0 12px 32px -8px rgba(10,24,64,.35), 0 1px 3px rgba(0,0,0,.02);
+overflow:hidden;
+}
+.sandbox::before{
+content:'';
+position:absolute;
+inset:-40% -40% auto auto;
+width:60%;
+height:60%;
+background:radial-gradient(circle, rgba(37,99,235,.10), transparent 70%);
+pointer-events:none;
+z-index:0;
+}
+.sandbox > *{ position:relative; z-index:1; }
+@media (prefers-reduced-motion: no-preference){
+.sandbox{ animation:sandboxFloat 7s ease-in-out infinite; }
+.sandbox::before{ animation:sandboxGlow 9s ease-in-out infinite; }
+}
+@keyframes sandboxFloat{
+0%,100%{ box-shadow:0 1px 2px rgba(0,0,0,.03), 0 12px 32px -8px rgba(10,24,64,.35), 0 1px 3px rgba(0,0,0,.02); transform:translateY(0); }
+50%{ box-shadow:0 1px 2px rgba(0,0,0,.03), 0 18px 40px -10px rgba(10,24,64,.42), 0 1px 3px rgba(0,0,0,.02); transform:translateY(-3px); }
+}
+@keyframes sandboxGlow{
+0%,100%{ opacity:.7; transform:translate(0,0) scale(1); }
+50%{ opacity:1; transform:translate(-6%,6%) scale(1.12); }
+}
+
+.status-bar{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11.5px; color:#334155; margin-bottom:18px; padding:10px 14px; background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.5); border-radius:8px; box-shadow:0 8px 24px -10px rgba(10,24,64,.5); }
+.status-dot{ width:8px;height:8px;border-radius:50%; background:var(--rule); flex-shrink:0; }
+.status-dot.ok{background:var(--good);}
+.status-dot.err{background:#dc2626;}
+.status-dot.loading{background:var(--warn);animation:pulse 1s infinite ease-in-out;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+#refreshBtn{ margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--muted); background:transparent; border:1px solid var(--rule); border-radius:6px; padding:4px 12px; cursor:pointer; transition:all .15s ease; }
+#refreshBtn:hover{border-color:var(--ink);color:var(--ink);background:#fff;}
+
+.lookup-label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin:0 0 10px; display:block; font-weight:500;}
+.lookup-row{display:flex;gap:10px;}
+#nipSelect{ flex:1; font-family:var(--sans); font-size:14px; padding:11px 14px; border:1.5px solid var(--rule); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer; transition:border-color .15s ease; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 14px center; padding-right:38px; }
+#nipSelect:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+#nipSelect:disabled{background:#fafafa;color:var(--muted);cursor:not-allowed;}
+#clearBtn{ font-family:var(--sans); font-size:13px; font-weight:600; color:var(--muted); background:#fff; border:1.5px solid var(--rule); border-radius:8px; padding:0 18px; cursor:pointer; transition:all .15s ease; }
+#clearBtn:hover{border-color:var(--ink);color:var(--ink);}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0;}
+.hint b{color:var(--ink);font-family:var(--mono);font-weight:500;}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state .glyph{font-family:var(--mono);font-size:28px;color:var(--rule);margin-bottom:10px;display:block;}
+.empty-state p{margin:4px 0;font-size:13.5px;}
+
+.not-found, .load-error{ background:var(--warn-soft); border:1px solid #fcd34d; color:#92400e; padding:14px 18px; border-radius:8px; font-size:13.5px; font-family:var(--mono); }
+.load-error{background:#fef2f2;border-color:#fca5a5;color:#991b1b;}
+
+.tf-header{background:var(--ink);color:#fff;border-radius:10px 10px 0 0;padding:20px 24px;}
+.tf-id{font-family:var(--mono);font-size:11px;color:#9ca3af;letter-spacing:.06em;}
+.tf-name{font-family:var(--serif);font-size:22px;font-weight:700;margin:4px 0 0;}
+.tf-stats{display:flex;gap:24px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);flex-wrap:wrap;}
+.tf-stats .stat .num{color:#fff;}
+.tf-stats .stat .lbl{color:#9ca3af;}
+.stat{font-family:var(--mono);}
+.stat .num{font-size:18px;font-weight:600;color:var(--ink);display:block;}
+.stat .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+
+.pml-list{background:var(--paper-raised);border:1px solid var(--rule);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;}
+.pml-card{border-bottom:1px solid var(--rule);cursor:pointer;user-select:none;}
+.pml-card:last-child{border-bottom:none;}
+.pml-card-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;transition:background .15s ease;}
+.pml-card-top:hover{background:var(--paper-soft);}
+.pml-card.open .pml-card-top{background:var(--good-soft);}
+.pml-name-block .pml-name{font-family:var(--serif);font-size:16px;font-weight:700;margin:0;}
+.pml-name-block .pml-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+.pml-name-block .pml-meta span{margin-right:12px;}
+.pml-name-block .pml-meta b{color:var(--ink);font-weight:600;}
+.pml-mini-stats{display:flex;gap:18px;flex-shrink:0;}
+.mini-stat{font-family:var(--mono);text-align:right;}
+.mini-stat .num{font-size:15px;font-weight:600;color:var(--ink);display:block;}
+.mini-stat .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.chevron{ font-family:var(--mono);font-size:12px;color:var(--muted); background:#fff;border:1px solid var(--rule);border-radius:50%; width:24px;height:24px;display:flex;align-items:center;justify-content:center; flex-shrink:0;transition:transform .2s ease; }
+.pml-card.open .chevron{transform:rotate(180deg);}
+.detail-wrap{max-height:0;overflow:hidden;transition:max-height .28s ease;}
+.detail-wrap.open{max-height:5000px;}
+.detail-inner{padding:0 24px 18px;}
+
+table.ppl-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.ppl-table caption{text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:10px 0 8px;}
+table.ppl-table thead th{text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1.5px solid var(--ink);padding:7px 8px;white-space:nowrap;}
+table.ppl-table thead th.num{text-align:right;}
+table.ppl-table tbody td{padding:9px 8px;border-bottom:1px solid var(--rule-soft);}
+table.ppl-table tbody td.num{text-align:right;font-family:var(--mono);font-size:12px;}
+table.ppl-table tbody tr:hover{background:var(--paper-soft);}
+.pct-bar-cell{display:flex;align-items:center;gap:7px;justify-content:flex-end;}
+.pct-track{width:40px;height:5px;background:var(--rule-soft);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.pct-fill{height:100%;background:var(--good);}
+.pct-fill.low{background:var(--warn);}
+.pct-fill.info{background:var(--info);}
+
+footer.page{margin-top:40px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);font-family:var(--mono);font-size:10.5px;color:#9fb3dd;letter-spacing:.03em;}
+
+@media (max-width:600px){
+.pml-card-top{flex-direction:column;align-items:flex-start;gap:10px;}
+.pml-mini-stats{gap:14px;}
+.tf-stats{flex-wrap:wrap;gap:14px;}
+table.ppl-table{font-size:11px;}
+.lookup-row{flex-direction:column;}
+.sandbox{padding:18px 16px;}
+}
+
+.update-badge{ display:inline-block; font-family:var(--mono); font-size:10px; color:#1e40af; background:var(--accent-soft); border:1px solid #bfdbfe; border-radius:4px; padding:1px 7px; margin-left:8px; vertical-align:middle; white-space:nowrap; }
+.update-badge.tf-badge{ color:#fff; background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); }
+.update-badge.pml-badge{ color:#1e40af; background:var(--accent-soft); border-color:#bfdbfe; }
+.update-badge.ppl-badge{ color:#166534; background:var(--good-soft); border-color:#bbf7d0; }
+
+.ppl-row-expandable { cursor: pointer; user-select: none; transition: background .15s ease; }
+.ppl-row-expandable:hover { background: var(--paper-soft); }
+.ppl-row-expandable.open { background: var(--good-soft); }
+.chevron-small { display: inline-block; font-family: var(--mono); font-size: 10px; color: var(--muted); margin-right: 6px; transition: transform .2s ease; vertical-align: middle; }
+.ppl-row-expandable.open .chevron-small { transform: rotate(180deg); }
+
+.idsubsls-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 8px 0; }
+.idsubsls-table thead th { padding: 7px 8px; text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--rule); background: var(--paper-soft); white-space: nowrap; }
+.idsubsls-table thead th.num { text-align: right; }
+.idsubsls-table tbody td { padding: 7px 8px; border-bottom: 1px solid var(--rule-soft); font-size: 11.5px; }
+.idsubsls-table tbody td.num { text-align: right; font-family: var(--mono); font-size: 11px; }
+.idsubsls-table tbody tr:hover { background: var(--paper-soft); }
+
+.gc-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-family: var(--mono); font-size: 11px; font-weight: 600; text-align: center; min-width: 24px; }
+.gc-badge.gc-1 { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
+.gc-badge.gc-0 { background: #f4f4f5; color: var(--muted); border: 1px solid #e4e4e7; }
+
+.dual-pct { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.dual-pct-row { display: flex; align-items: center; gap: 6px; justify-content: flex-end; font-size: 11px; }
+.dual-pct-row .lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; min-width: 28px; text-align: right; }
+.dual-pct-row .val { font-family: var(--mono); font-size: 11px; font-weight: 600; min-width: 52px; text-align: right; }
+.dual-pct-row .val.kirim { color: var(--good); }
+.dual-pct-row .val.total { color: var(--info); }
+.dual-pct .pct-track { width: 36px; height: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="page">
+<p class="eyebrow">Sensus Ekonomi 2026</p>
+<h1>Monitoring Lapangan SE2026 Kota Banjarmasin</h1>
+<p class="sub">Pilih Task Force untuk menampilkan seluruh PML dan PPL di bawahnya.</p>
+</header>
+
+<div class="status-bar">
+<span class="status-dot loading" id="statusDot"></span>
+<span id="statusText">Memuat data terbaru…</span>
+<button id="refreshBtn" type="button">↻ Refresh</button>
+</div>
+
+<div class="sandbox">
+<label class="lookup-label" for="nipSelect">Pilih Task Force</label>
+<div class="lookup-row">
+<select id="nipSelect" disabled>
+<option value="">— Memuat daftar Task Force —</option>
+</select>
+<button id="clearBtn" type="button">Reset</button>
+</div>
+<p class="hint" id="hintText">Memuat daftar Task Force…</p>
+</div>
+
+<div id="resultArea"></div>
+
+<footer class="page">
+DATA SUMBER: PROGRESS PPL · SE2026 — DIAMBIL LANGSUNG DARI GOOGLE SHEETS SAAT HALAMAN DIBUKA
+</footer>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=2111234947&single=true&output=csv";
+const NIP_MAP = {"340019495":"M.TAUFIK R","132311851":"IMA","340015186":"NURUDDIN ZAIN","340015557":"SYAKERANI","340050198":"PRATIWI","340055352":"NOORHAMIMAH","340056117":"FARIDA AMINA","340016618":"DWI SETYO MAYLENA","340056874":"RAISA NOOR MAULIDA","340018139":"JUNAIDI EFENDI","340018823":"M.IQBAL","340055342":"DANY THERESA","340057558":"RISKA FINA AYUNINDA","340058750":"GHITA","340060168":"KHALISTA","340061619":"ADIMA LULUATUN","340063514":"SALMA AFNA H. H","340066120":"ANNISA","340066397":"NASYWA","340012390":"AL AMIN","340065201":"IMRON","340052140":"IRWAN","340065025":"SAFWAN","340016619":"JULIANA ADMAKA","340019091":"LISDA FITRIAWATI","340062842":"HENDRA"};
+const STORAGE_KEY = 'se2026_nip_terakhir';
+
+let DATA = [];
+let gcMap = {};
+let SHEET_TIMESTAMP = null;
+
+const elSelect = document.getElementById('nipSelect');
+const elResult = document.getElementById('resultArea');
+const elClear = document.getElementById('clearBtn');
+const elHint = document.getElementById('hintText');
+const elStatusDot = document.getElementById('statusDot');
+const elStatusText = document.getElementById('statusText');
+const elRefreshBtn = document.getElementById('refreshBtn');
+
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{maximumFractionDigits:0}); }
+function fmtDec(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+'%'; }
+function escapeHtml(str){ if(str===null||str===undefined) return ''; return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function toNum(s){
+  if (s===undefined||s===null) return null;
+  s = String(s).trim();
+  if (s === '') return null;
+
+  // Buang spasi non-breaking yang kadang disisipkan Google Sheets pada angka.
+  s = s.replace(/\u00A0/g, '').replace(/\s/g, '');
+  if (s === '') return null;
+
+  const hasDot = s.includes('.');
+  const hasComma = s.includes(',');
+
+  // Kasus: ada titik DAN koma sekaligus -> yang terakhir muncul adalah desimal,
+  // sisanya pemisah ribuan. Berlaku utk format ID (1.234,56) maupun US (1,234.56).
+  if (hasDot && hasComma) {
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // 1.234,56 -> ribuan titik, desimal koma
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // 1,234.56 -> ribuan koma, desimal titik
+      s = s.replace(/,/g, '');
+    }
+  } else if (hasComma && !hasDot) {
+    // Hanya koma: bedakan ribuan (1,234 / 12,345) vs desimal (1,5 / 0,75)
+    // Pemisah ribuan SELALU diikuti tepat 3 digit dan bisa berulang (1,234,567).
+    if (/^\d{1,3}(,\d{3})+$/.test(s)) {
+      s = s.replace(/,/g, '');
+    } else {
+      s = s.replace(',', '.');
+    }
+  } else if (hasDot && !hasComma) {
+    // Hanya titik: bedakan ribuan (1.234 / 67.646) vs desimal (1.5 / 8.3)
+    // Pemisah ribuan SELALU diikuti tepat 3 digit dan bisa berulang (1.234.567).
+    if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+      s = s.replace(/\./g, '');
+    }
+    // selain itu biarkan titik sebagai desimal, mis. "8.3", "13.833"
+  }
+
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i=0; i<text.length; i++){
+    const ch = text[i];
+    if (inQuotes){
+      if (ch === '"'){
+        if (text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else { field += ch; }
+    } else {
+      if (ch === '"'){ inQuotes = true; }
+      else if (ch === ','){ row.push(field); field=''; }
+      else if (ch === '\r'){ }
+      else if (ch === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else { field += ch; }
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function parseTimestamp(str){
+  if (!str) return null;
+  str = String(str).trim();
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  let m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) {
+    let day = parseInt(m[1], 10);
+    let month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    let hour = parseInt(m[4], 10);
+    let min = parseInt(m[5], 10);
+    let sec = m[6] ? parseInt(m[6], 10) : 0;
+    d = new Date(year, month, day, hour, min, sec);
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    let day = parseInt(m[1], 10);
+    let month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function getTimeText(date){
+  if (!date) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'baru saja';
+  else if (diffMins < 60) return diffMins + ' menit lalu';
+  else if (diffHours < 24) return diffHours + ' jam lalu';
+  else return diffDays + ' hari lalu';
+}
+
+function getFullDate(date){
+  if (!date) return '';
+  return date.toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function setStatus(state, text){
+  elStatusDot.className = 'status-dot ' + state;
+  if (SHEET_TIMESTAMP && state === 'ok') {
+    elStatusText.textContent = text + " · " + getFullDate(SHEET_TIMESTAMP);
+  } else {
+    elStatusText.textContent = text;
+  }
+}
+
+function getUpdateBadge(type='default'){
+  if (!SHEET_TIMESTAMP) return '';
+  const timeText = getTimeText(SHEET_TIMESTAMP);
+  const fullDate = getFullDate(SHEET_TIMESTAMP);
+  const typeClass = type === 'tf' ? 'tf-badge' : type === 'pml' ? 'pml-badge' : type === 'ppl' ? 'ppl-badge' : '';
+  return `<span class="update-badge ${typeClass}" title="Data diperbarui: ${fullDate}">diperbarui ${timeText}</span>`;
+}
+
+function refreshUpdateBadges() {
+  if (!SHEET_TIMESTAMP) return;
+  const timeText = getTimeText(SHEET_TIMESTAMP);
+  const fullDate = getFullDate(SHEET_TIMESTAMP);
+  document.querySelectorAll('.update-badge').forEach(badge => {
+    badge.textContent = 'diperbarui ' + timeText;
+    badge.title = 'Data diperbarui: ' + fullDate;
+  });
+  if (elStatusDot.classList.contains('ok')) {
+    elStatusText.textContent = 'Data termuat · ' + DATA.length.toLocaleString('id-ID') + ' baris PPL · ' + getFullDate(SHEET_TIMESTAMP);
+  }
+}
+
+setInterval(refreshUpdateBadges, 30000);
+
+async function loadData(){
+  setStatus('loading', 'Memuat data terbaru…');
+  elSelect.disabled = true;
+  try{
+    const res = await fetch(CSV_URL + '&_=' + Date.now(), {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const grid = parseCSV(text);
+
+    if (grid.length > 0 && grid[0].length > 0) {
+      const a1Value = String(grid[0][0] || '').trim();
+      const parsed = parseTimestamp(a1Value);
+      if (parsed) SHEET_TIMESTAMP = parsed;
+    }
+
+    let headerRowIdx = grid.findIndex(r => r.some(v => String(v).trim().toLowerCase() === 'kecamatan'));
+    if (headerRowIdx === -1) headerRowIdx = 1;
+    const header = grid[headerRowIdx] || [];
+    const norm = v => String(v).trim().toLowerCase();
+
+    // Deteksi Indeks Kolom secara Dinamis dari Baris Header Google Sheets.
+    // Sheet sumber punya beberapa blok tabel ringkasan berdampingan (Per Kecamatan, Per PML, dst)
+    // di kolom yang lebih jauh ke kanan — pencarian "kecamatan"/"target" polos bisa salah tangkap
+    // blok itu kalau header utama tidak ditemukan duluan. Karena itu kita cari kolom utama HANYA
+    // di rentang sebelum blok kedua dimulai (yaitu sebelum ditemukan header "kecamatan" yang kedua).
+    let secondKecAt = -1;
+    for (let i = 0; i < header.length; i++){
+      if (norm(header[i]) === 'kecamatan'){
+        if (secondKecAt === -1 && header.slice(0,i).some(v=>norm(v)==='kecamatan')){ secondKecAt = i; break; }
+      }
+    }
+    const mainHeader = secondKecAt === -1 ? header : header.slice(0, secondKecAt);
+    const findMain = test => { const i = mainHeader.findIndex(test); return i; };
+
+    let c_kec = findMain(v => norm(v) === 'kecamatan');
+    let c_tf  = findMain(v => norm(v) === 'task force' || norm(v) === 'tf');
+    let c_pml = findMain(v => norm(v) === 'pml');
+    let c_ppl = findMain(v => norm(v) === 'ppl');
+    let c_tar = findMain(v => norm(v) === 'jumlah target' || norm(v) === 'target');
+    let c_kir = findMain(v => norm(v) === 'jumlah dikirim' || norm(v) === 'kirim');
+    let c_drf = findMain(v => norm(v) === 'draft' || norm(v) === 'jumlah draft');
+    let c_rta = findMain(v => norm(v).includes('rata'));
+    let c_sub = findMain(v => norm(v) === 'id sub sls' || norm(v) === 'idsubsls' || (norm(v).includes('sls') && norm(v).includes('id')));
+    let c_gc  = findMain(v => norm(v) === 'gc' || norm(v).includes('ket gc') || norm(v).includes('ground truth'));
+
+    // Pengaman jika tidak ditemukan (menggunakan fallback indeks sesuai struktur sheet "Import")
+    if(c_kec===-1) c_kec=0; if(c_tf===-1) c_tf=1; if(c_pml===-1) c_pml=2; if(c_ppl===-1) c_ppl=4;
+    if(c_tar===-1) c_tar=5; if(c_kir===-1) c_kir=6; if(c_drf===-1) c_drf=7; if(c_rta===-1) c_rta=8;
+    if(c_sub===-1) c_sub=42; if(c_gc===-1) c_gc=53;
+
+    const rows = [];
+    const gcMapLocal = {};
+
+    for (let r = headerRowIdx+1; r < grid.length; r++){
+      const cols = grid[r];
+      if (!cols || cols.length < 5) continue;
+      
+      const pml = (cols[c_pml]||'').trim();
+      const ppl = (cols[c_ppl]||'').trim();
+      if (!pml || !ppl || /total/i.test(pml)) continue;
+
+      const idsubsls = cols.length > c_sub ? String(cols[c_sub] || '').trim() : '';
+      const ketGC = cols.length > c_gc ? String(cols[c_gc] || '').trim() : '';
+
+      if (idsubsls && idsubsls.toLowerCase() !== 'idsubsls') {
+        gcMapLocal[idsubsls] = ketGC;
+      }
+
+      rows.push({
+        kec: (cols[c_kec]||'').trim(),
+        tf: (cols[c_tf]||'').trim(),
+        pml: pml,
+        ppl: ppl,
+        idsubsls: idsubsls,
+        target: toNum(cols[c_tar]),
+        kirim: toNum(cols[c_kir]),
+        draft: toNum(cols[c_drf]),
+        rata: toNum(cols[c_rta])
+      });
+    }
+
+    if (rows.length === 0) throw new Error('Data kosong setelah parsing');
+    DATA = rows;
+    gcMap = gcMapLocal;
+
+    setStatus('ok', DATA.length.toLocaleString('id-ID') + ' baris data · ' + Object.keys(gcMap).length + ' ID SUBSLS');
+    populateDropdown();
+
+    elHint.innerHTML = 'Total <b>' + Object.keys(NIP_MAP).length.toLocaleString('id-ID') + '</b> Task Force terdaftar.';
+
+    const savedNip = loadSavedNip();
+    if (savedNip && NIP_MAP[savedNip]){
+      elSelect.value = savedNip;
+      doSearch();
+    } else {
+      renderEmpty();
+    }
+  }catch(err){
+    setStatus('err', 'Gagal memuat data');
+    elResult.innerHTML = '<div class="load-error">Gagal mengambil data: ' + escapeHtml(err.message) + '</div>';
+  }
+}
+
+function populateDropdown(){
+  const options = ['<option value="">— Pilih Task Force —</option>'];
+  Object.entries(NIP_MAP)
+    .sort((a,b) => a[1].localeCompare(b[1]))
+    .forEach(([nip, name]) => {
+      options.push(`<option value="${escapeHtml(nip)}">${escapeHtml(name)} · ${escapeHtml(nip)}</option>`);
+    });
+  elSelect.innerHTML = options.join('');
+  elSelect.disabled = false;
+}
+
+function renderEmpty(){
+  elResult.innerHTML = '<div class="sandbox empty-state"><span class="glyph">[ ? ]</span><p>Silakan pilih Task Force dari dropdown di atas.</p></div>';
+}
+
+function renderNotFound(nip){
+  elResult.innerHTML = '<div class="sandbox not-found">NIP "' + escapeHtml(nip) + '" tidak ditemukan.</div>';
+}
+
+function renderResult(nip, tfName){
+  const tfNameNorm = tfName.trim();
+  const teamRows = DATA.filter(r => r.tf.trim().toUpperCase() === tfNameNorm.toUpperCase());
+  if (teamRows.length === 0){
+    elResult.innerHTML = '<div class="sandbox not-found">Task Force tidak ada datanya.</div>';
+    return;
+  }
+  const kec = teamRows[0].kec;
+  const totalTarget = teamRows.reduce((s,r)=> s + (r.target||0), 0);
+  const totalKirim = teamRows.reduce((s,r)=> s + (r.kirim||0), 0);
+  const totalDraft = teamRows.reduce((s,r)=> s + (r.draft||0), 0);
+  const totalProgress = totalKirim + totalDraft;
+  const avgPersen = totalTarget > 0 ? (totalKirim/totalTarget*100) : 0;
+  const avgPersenTotal = totalTarget > 0 ? (totalProgress/totalTarget*100) : 0;
+
+  // Rumus hitung total personil PPL unik riil (Bukan total baris SLS)
+  const uniquePplsCount = new Set(teamRows.map(r => r.ppl.trim().toUpperCase())).size;
+
+  const pmlGroups = {};
+  teamRows.forEach(r => { (pmlGroups[r.pml] = pmlGroups[r.pml] || []).push(r); });
+
+  const pmlCardsHtml = Object.entries(pmlGroups).map(([pmlName, pplRows], idx) => {
+    const pmlTarget = pplRows.reduce((s,r)=> s + (r.target||0), 0);
+    const pmlKirim = pplRows.reduce((s,r)=> s + (r.kirim||0), 0);
+    const pmlDraft = pplRows.reduce((s,r)=> s + (r.draft||0), 0);
+    const pmlProgress = pmlKirim + pmlDraft;
+    const pmlPersen = pmlTarget > 0 ? (pmlKirim/pmlTarget*100) : 0;
+    const pmlPersenTotal = pmlTarget > 0 ? (pmlProgress/pmlTarget*100) : 0;
+
+    const pplGroups = {};
+    pplRows.forEach(r => {
+      if (!pplGroups[r.ppl]) pplGroups[r.ppl] = [];
+      pplGroups[r.ppl].push(r);
+    });
+
+    const rowsHtml = Object.entries(pplGroups).map(([pplName, idsubRows]) => {
+      const pplTarget = idsubRows.reduce((s,r) => s + (r.target||0), 0);
+      const pplKirim = idsubRows.reduce((s,r) => s + (r.kirim||0), 0);
+      const pplDraft = idsubRows.reduce((s,r) => s + (r.draft||0), 0);
+      const pplRata = idsubRows.reduce((s,r) => s + (r.rata||0), 0);
+      const pplProgress = pplKirim + pplDraft;
+      const pplPct = pplTarget > 0 ? (pplKirim / pplTarget * 100) : 0;
+      const pplPctTotal = pplTarget > 0 ? (pplProgress / pplTarget * 100) : 0;
+      const pctClass = pplPct < 2 ? 'low' : '';
+
+      const idsubRowsHtml = idsubRows.map(r => {
+        const pct = r.target > 0 ? (r.kirim / r.target * 100) : 0;
+        const pctTotal = r.target > 0 ? ((r.kirim + r.draft) / r.target * 100) : 0;
+        const pctClassSub = pct < 2 ? 'low' : '';
+        let gcKeterangan = '<span style="color:#aaa;">-</span>';
+        const lookupKey = String(r.idsubsls || '').trim();
+        const gcVal = gcMap[lookupKey] !== undefined ? String(gcMap[lookupKey]).trim() : '';
+        if (gcVal === '1') {
+          gcKeterangan = '<span class="gc-badge gc-1">1</span>';
+        } else if (gcVal === '0') {
+          gcKeterangan = '<span class="gc-badge gc-0">0</span>';
+        } else if (gcVal !== '') {
+          gcKeterangan = escapeHtml(gcVal);
+        }
+        return '<tr><td>' + escapeHtml(r.idsubsls) + '</td><td>' + gcKeterangan + '</td><td class="num">' + fmt(r.target) + '</td><td class="num">' + fmt(r.kirim) + '</td><td class="num">' + fmt(r.draft) + '</td><td class="num">' + fmtDec(r.rata) + '</td><td class="num"><div class="dual-pct"><div class="dual-pct-row"><span class="lbl">K</span><span class="val kirim">' + fmtPct(pct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassSub + '" style="width:' + Math.min(pct,100) + '%"></span></span></div><div class="dual-pct-row"><span class="lbl">K+D</span><span class="val total">' + fmtPct(pctTotal) + '</span><span class="pct-track"><span class="pct-fill info" style="width:' + Math.min(pctTotal,100) + '%"></span></span></div></div></td></tr>';
+      }).join('');
+
+      return '<tr class="ppl-row-expandable"><td><span class="chevron-small">▾</span> ' + escapeHtml(pplName) + ' ' + getUpdateBadge('ppl') + '</td><td class="num">' + fmt(pplTarget) + '</td><td class="num">' + fmt(pplKirim) + '</td><td class="num">' + fmt(pplDraft) + '</td><td class="num">' + fmtDec(pplRata) + '</td><td class="num"><div class="dual-pct"><div class="dual-pct-row"><span class="lbl">K</span><span class="val kirim">' + fmtPct(pplPct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClass + '" style="width:' + Math.min(pplPct,100) + '%"></span></span></div><div class="dual-pct-row"><span class="lbl">K+D</span><span class="val total">' + fmtPct(pplPctTotal) + '</span><span class="pct-track"><span class="pct-fill info" style="width:' + Math.min(pplPctTotal,100) + '%"></span></span></div></div></td></tr><tr class="ppl-detail-row" style="display:none;"><td colspan="6" style="padding: 0 12px 12px 12px; background: #fafafa;"><table class="idsubsls-table"><thead><tr><th>ID SUBSLS</th><th>Ket. GC</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Persentase</th></tr></thead><tbody>' + idsubRowsHtml + '</tbody></table></td></tr>';
+    }).join('');
+
+    return '<div class="pml-card" data-idx="' + idx + '"><div class="pml-card-top"><div class="pml-name-block"><p class="pml-name">' + escapeHtml(pmlName) + ' ' + getUpdateBadge('pml') + '</p><div class="pml-meta"><span><b>' + Object.keys(pplGroups).length + '</b> PPL</span><span>K: <b style="color:var(--good);">' + fmtPct(pmlPersen) + '</b></span><span>K+D: <b style="color:var(--info);">' + fmtPct(pmlPersenTotal) + '</b></span></div></div><div class="pml-mini-stats"><div class="mini-stat"><span class="num">' + fmt(pmlTarget) + '</span><span class="lbl">Target</span></div><div class="mini-stat"><span class="num" style="color:var(--good);">' + fmt(pmlKirim) + '</span><span class="lbl">Dikirim</span></div><div class="mini-stat"><span class="num" style="color:var(--info);">' + fmt(pmlDraft) + '</span><span class="lbl">Draft</span></div></div><div class="chevron">▾</div></div><div class="detail-wrap"><div class="detail-inner"><table class="ppl-table"><caption>Seluruh PPL di bawah ' + escapeHtml(pmlName) + '</caption><thead><tr><th>PPL</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Persentase</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div></div></div>';
+  }).join('');
+
+  elResult.innerHTML = '<div class="tf-header"><div class="tf-id">' + escapeHtml(kec) + ' · NIP ' + escapeHtml(nip) + '</div><p class="tf-name">' + escapeHtml(tfNameNorm) + ' ' + getUpdateBadge('tf') + '</p><div class="tf-stats"><div class="stat"><span class="num">' + Object.keys(pmlGroups).length + '</span><span class="lbl">PML</span></div><div class="stat"><span class="num">' + uniquePplsCount + '</span><span class="lbl">Total PPL</span></div><div class="stat"><span class="num">' + fmt(totalTarget) + '</span><span class="lbl">Target</span></div><div class="stat"><span class="num" style="color:var(--good);">' + fmt(totalKirim) + '</span><span class="lbl">Dikirim</span></div><div class="stat"><span class="num" style="color:var(--info);">' + fmt(totalDraft) + '</span><span class="lbl">Draft</span></div><div class="stat"><span class="num" style="color:var(--good);">' + fmtPct(avgPersen) + '</span><span class="lbl">K</span></div><div class="stat"><span class="num" style="color:var(--info);">' + fmtPct(avgPersenTotal) + '</span><span class="lbl">K+D</span></div></div></div><div class="pml-list">' + pmlCardsHtml + '</div>';
+
+  document.querySelectorAll('.pml-card').forEach(card => {
+    const top = card.querySelector('.pml-card-top');
+    const detail = card.querySelector('.detail-wrap');
+    top.addEventListener('click', () => {
+      const isOpen = card.classList.toggle('open');
+      detail.classList.toggle('open', isOpen);
+    });
+  });
+  document.querySelectorAll('.ppl-row-expandable').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const detailRow = row.nextElementSibling;
+      if (detailRow && detailRow.classList.contains('ppl-detail-row')) {
+        const isHidden = detailRow.style.display === 'none';
+        detailRow.style.display = isHidden ? 'table-row' : 'none';
+        row.classList.toggle('open', isHidden);
+      }
+    });
+  });
+  refreshUpdateBadges();
+}
+
+function doSearch(){
+  const raw = elSelect.value.trim();
+  if (!raw){ renderEmpty(); return; }
+  const tfName = NIP_MAP[raw];
+  if (!tfName){ renderNotFound(raw); return; }
+  renderResult(raw, tfName);
+}
+
+function saveNip(nip){
+  try{ if (nip){ localStorage.setItem(STORAGE_KEY, nip); } else { localStorage.removeItem(STORAGE_KEY); } }catch(e){}
+}
+function loadSavedNip(){
+  try{ return localStorage.getItem(STORAGE_KEY) || ''; }catch(e){ return ''; }
+}
+
+elSelect.addEventListener('change', () => { doSearch(); saveNip(elSelect.value.trim()); });
+elClear.addEventListener('click', () => { elSelect.value=''; renderEmpty(); saveNip(''); });
+elRefreshBtn.addEventListener('click', () => { loadData(); });
+
+loadData();
+</script>
+</body>
+</html>
