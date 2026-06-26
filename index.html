@@ -174,8 +174,6 @@ const STORAGE_KEY = 'se2026_nip_terakhir';
 let DATA = [];
 let gcMap = {};
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-// Ambil CSV langsung dari Google Sheets (TANPA proxy — proxy CORS sebelumnya yang menyebabkan HTTP 408).
-// Tetap ada retry+backoff untuk menangani gangguan jaringan sesaat.
 async function fetchCsvDirect(targetUrl, label){
     const RETRIES = 3;
     let lastErr = null;
@@ -211,11 +209,9 @@ function toNum(s){
     if (s === '') return null;
     s = s.replace(/[^\d.,\-]/g, '');
     if (s === '') return null;
-
     const lastDot = s.lastIndexOf('.');
     const lastComma = s.lastIndexOf(',');
-    let decSep = null; // null = tidak ada pemisah desimal -> semua pemisah dianggap ribuan
-
+    let decSep = null;
     if (lastDot > -1 && lastComma > -1) {
         decSep = lastComma > lastDot ? ',' : '.';
     } else if (lastComma > -1 || lastDot > -1) {
@@ -223,22 +219,18 @@ function toNum(s){
         const lastIdx = lastComma > -1 ? lastComma : lastDot;
         const tail = s.slice(lastIdx + 1);
         const sepCount = s.split(sep).length - 1;
-        // Satu pemisah + diikuti TEPAT 3 digit -> kemungkinan besar ribuan (cth "1,000" / "1.000" = 1000)
-        // Diikuti 1-2 digit -> desimal (cth "12,5" / "0.50")
         if (tail.length === 3 && sepCount === 1) {
             decSep = null;
         } else if (tail.length >= 1 && tail.length <= 2) {
             decSep = sep;
         } else {
-            decSep = null; // grouping ribuan bertingkat, cth "1.234.567"
+            decSep = null;
         }
     }
-
     let cleaned;
-    if (decSep === ',') cleaned = s.replace(/\./g, '').replace(/,/g, '.');
+    if (decSep === ',') cleaned = s.replace(/\./g, '').replace(',', '.');
     else if (decSep === '.') cleaned = s.replace(/,/g, '');
     else cleaned = s.replace(/[.,]/g, '');
-
     const n = parseFloat(cleaned);
     return isNaN(n) ? null : n;
 }
@@ -329,9 +321,10 @@ break;
 gcMap = {};
 for (let i = startIdx; i < grid.length; i++) {
 const cols = grid[i];
-if (!cols || cols.length < 7) continue;
+// FIXED: Kolom BB adalah index 53 (A=0, B=1, ..., AQ=42, ..., BB=53)
+if (!cols || cols.length < 54) continue;
 const idsub = String(cols[0] || '').trim();
-const ketGC = String(cols[6] || '').trim();
+const ketGC = String(cols[53] || '').trim();
 if (idsub && idsub.toLowerCase() !== 'idsubsls') {
 gcMap[idsub] = ketGC;
 }
@@ -357,8 +350,8 @@ const kec = (cols[0]||'').trim();
 const tf = (cols[1]||'').trim();
 const pml = (cols[2]||'').trim();
 const ppl = (cols[4]||'').trim();
-// PERBAIKAN: Index 36 bukan 47
-const idsubsls = cols.length > 36 ? String(cols[36] || '').trim() : '';
+// FIXED: Kolom AQ adalah index 42 (A=0, ..., AQ=42)
+const idsubsls = cols.length > 42 ? String(cols[42] || '').trim() : '';
 if (!pml || !ppl) continue;
 if (/total/i.test(pml)) continue;
 rows.push({
