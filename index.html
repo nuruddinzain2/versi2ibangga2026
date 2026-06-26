@@ -168,9 +168,44 @@ DATA SUMBER: PROGRESS PPL · SE2026 — DIAMBIL LANGSUNG DARI GOOGLE SHEETS SAAT
 <script>
 // ===== KONFIGURASI =====
 const PROXY_URL = "https://api.allorigins.win/raw?url=";
+// Proxy cadangan, dicoba berurutan jika proxy utama timeout/gagal (mis. HTTP 408/429/5xx)
+const PROXY_FALLBACKS = [
+    "https://api.allorigins.win/raw?url=",
+    "https://corsproxy.io/?url=",
+    "https://api.codetabs.com/v1/proxy?quest="
+];
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=2111234947&single=true&output=csv";
 const CSV_URL_GC = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=611204204&single=true&output=csv";
 const CSV_URL_UPDATE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=0&single=true&output=csv";
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// Ambil CSV dengan retry (backoff) per proxy, lalu pindah ke proxy cadangan kalau tetap gagal.
+// Ini untuk menangani error sementara seperti HTTP 408 (timeout) / 429 / 5xx dari proxy CORS.
+async function fetchCsvWithRetry(targetUrl, label){
+    const RETRIES_PER_PROXY = 2;
+    let lastErr = null;
+    for (let p = 0; p < PROXY_FALLBACKS.length; p++) {
+        const proxy = PROXY_FALLBACKS[p];
+        for (let attempt = 0; attempt <= RETRIES_PER_PROXY; attempt++) {
+            try {
+                const url = proxy + encodeURIComponent(targetUrl + (targetUrl.includes('?') ? '&' : '?') + '_=' + Date.now());
+                const res = await fetch(url, {cache:'no-store'});
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const text = await res.text();
+                if (!text || text.trim() === '') throw new Error('Respon kosong');
+                return text;
+            } catch (err) {
+                lastErr = err;
+                console.warn('⚠️ [' + label + '] Gagal via proxy ' + (p+1) + '/' + PROXY_FALLBACKS.length + ' (percobaan ' + (attempt+1) + '): ' + err.message);
+                // Jeda sebelum mencoba lagi (backoff bertingkat: 600ms, 1200ms, ...)
+                if (attempt < RETRIES_PER_PROXY) await sleep(600 * (attempt + 1));
+            }
+        }
+        // Habis retry di proxy ini, lanjut ke proxy berikutnya
+    }
+    throw lastErr || new Error('Semua proxy gagal');
+}
 
 const NIP_MAP = {"340019495":"M.TAUFIK R","132311851":"IMA","340015186":"NURUDDIN ZAIN","340015557":"SYAKERANI","340050198":"PRATIWI","340055352":"NOORHAMIMAH","340056117":"FARIDA AMINA","340016618":"DWI SETYO MAYLENA","340056874":"RAISA NOOR MAULIDA","340018139":"JUNAIDI EFENDI","340018823":"M.IQBAL","340055342":"DANY THERESA","340057558":"RISKA FINA AYUNINDA","340058750":"GHITA","340060168":"KHALISTA","340061619":"ADIMA LULUATUN","340063514":"SALMA AFNA H. H","340066120":"ANNISA","340066397":"NASYWA","340012390":"AL AMIN","340065201":"IMRON","340052140":"IRWAN","340065025":"SAFWAN","340016619":"JULIANA ADMAKA","340019091":"LISDA FITRIAWATI","340062842":"HENDRA"};
 const STORAGE_KEY = 'se2026_nip_terakhir';
@@ -362,10 +397,7 @@ function refreshUpdateBadges() {
 // ===== DATA LOADING =====
 async function loadUpdateInfo() {
     try {
-        const url = PROXY_URL + encodeURIComponent(CSV_URL_UPDATE + '&_=' + Date.now());
-        const res = await fetch(url, {cache:'no-store'});
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
+        const text = await fetchCsvWithRetry(CSV_URL_UPDATE, 'update');
         const grid = parseCSV(text);
         if (grid.length > 0 && grid[0].length > 0) {
             const updateText = String(grid[0][0] || '').trim();
@@ -380,10 +412,7 @@ async function loadUpdateInfo() {
 
 async function loadGCData() {
     try {
-        const url = PROXY_URL + encodeURIComponent(CSV_URL_GC + '&_=' + Date.now());
-        const res = await fetch(url, {cache:'no-store'});
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
+        const text = await fetchCsvWithRetry(CSV_URL_GC, 'GC');
         const grid = parseCSV(text);
 
         gcMap = {};
@@ -434,10 +463,7 @@ async function loadData(){
     setStatus('loading', 'Memuat data terbaru…');
     elInput.disabled = true;
     try{
-        const url = PROXY_URL + encodeURIComponent(CSV_URL + '&_=' + Date.now());
-        const res = await fetch(url, {cache:'no-store'});
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
+        const text = await fetchCsvWithRetry(CSV_URL, 'data utama');
         const grid = parseCSV(text);
         
         let headerRowIdx = -1;
@@ -498,7 +524,7 @@ async function loadData(){
     }catch(err){
         console.error('❌ Error:', err);
         setStatus('err', 'Gagal memuat data');
-        elResult.innerHTML = '<div class="load-error">❌ Gagal mengambil data: ' + escapeHtml(err.message) + '</div>';
+        elResult.innerHTML = '<div class="load-error">❌ Gagal mengambil data setelah beberapa percobaan: ' + escapeHtml(err.message) + '<br><span style="font-size:11.5px;opacity:.8;">Biasanya ini timeout sementara dari layanan proxy, bukan masalah data. Coba klik "↻ Refresh data" di atas.</span></div>';
         elInput.disabled = false;
     }
 }
