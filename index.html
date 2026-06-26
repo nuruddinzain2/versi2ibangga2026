@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitoring Pendataan SE2026 — Kota Banjarmasin</title>
 <style>
-/* ... CSS sama persis seperti sebelumnya ... */
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz@8..60&family=Inter:wght@400;500;600;700&display=swap');
 :root{
 --ink:#1c2630;
---paper:#ffe5be;
+--paper:#ffe5be; /* Warna orange dibuat jauh lebih muda agar soft dan kontras */
 --paper-raised:#ffffff;
 --rule:#d8d2c4;
 --accent:#b4452f;
@@ -93,11 +92,31 @@ table.ppl-table tbody tr:hover{background:#fbfaf6;}
 .pct-fill.low{background:var(--warn);}
 footer.page{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.03em;}
 @media (max-width:600px){
-.pml-card-top{flex-direction:column;align-items:flex-start;gap:10px;}
-.pml-mini-stats{gap:14px;}
-.tf-stats{flex-wrap:wrap;gap:14px;}
+.wrap{padding:16px 12px 60px;}
+h1{font-size:clamp(24px,7vw,32px);}
+.eyebrow{font-size:11.5px;}
+.sub{font-size:12.5px;}
+.status-bar{flex-wrap:wrap;font-size:10.5px;}
+#refreshBtn{margin-left:0;}
+.lookup{padding:14px 14px;}
+.pml-card-top{flex-direction:column;align-items:flex-start;gap:10px;padding:13px 14px;}
+.pml-mini-stats{gap:14px;width:100%;}
+.tf-header{padding:14px 16px;}
+.tf-stats{flex-wrap:wrap;gap:10px 16px;}
+.tf-stats .stat{min-width:72px;}
+.tf-name{font-size:19px;}
 table.ppl-table{font-size:11px;}
+.idsubsls-table{font-size:11px;}
 .lookup-row{flex-direction:column;}
+#clearBtn{padding:9px 18px;}
+.detail-inner{padding:0 12px 14px;}
+.pml-meta{display:flex;flex-direction:column;gap:3px;}
+.pml-meta span{margin-right:0;}
+}
+@media (max-width:420px){
+.pml-mini-stats{gap:10px;}
+.mini-stat .num{font-size:13px;}
+.tf-stats{gap:8px 12px;}
 }
 .update-badge{ display:inline-block; font-family:var(--mono); font-size:10px; color:#7a5c3a; background:#f5e6c8; border:1px solid #d4c4a0; border-radius:3px; padding:1px 7px; margin-left:8px; vertical-align:middle; white-space:nowrap; }
 .update-badge.tf-badge{ color:#cfc6b4; background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); }
@@ -117,9 +136,9 @@ table.ppl-table{font-size:11px;}
 .gc-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-family: var(--mono); font-size: 11px; font-weight: 600; text-align: center; min-width: 24px; }
 .gc-badge.gc-1 { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
 .gc-badge.gc-0 { background: #f4f4f4; color: var(--muted); border: 1px solid #ddd; }
-.gc-debug { font-size: 10px; color: #999; font-family: var(--mono); }
+.table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px; }
+.table-scroll table{ min-width:560px; }
 </style>
-<base target="_blank">
 </head>
 <body>
 <div class="wrap">
@@ -146,13 +165,6 @@ table.ppl-table{font-size:11px;}
 DATA SUMBER: PROGRESS PPL · SE2026 — DIAMBIL LANGSUNG DARI GOOGLE SHEETS SAAT HALAMAN DIBUKA
 </footer>
 </div>
-
-<!-- DEBUG PANEL: Hapus setelah fix -->
-<div id="debugPanel" style="position:fixed;bottom:10px;right:10px;background:#1c2630;color:#fff;padding:10px 15px;font-family:monospace;font-size:11px;border-radius:4px;max-width:400px;max-height:200px;overflow:auto;z-index:9999;display:none;">
-  <b>Debug GC</b><br>
-  <span id="debugContent"></span>
-</div>
-
 <script>
 // ===== KONFIGURASI =====
 const PROXY_URL = "https://api.allorigins.win/raw?url=";
@@ -168,7 +180,6 @@ let DATA = [];
 let gcMap = {};
 let LAST_UPDATE_TIME = null;
 let LAST_UPDATE_TEXT = '';
-let DEBUG_GC = []; // Untuk debugging
 
 // ===== DOM REFS =====
 const elInput = document.getElementById('nipInput');
@@ -178,8 +189,6 @@ const elHint = document.getElementById('hintText');
 const elStatusDot = document.getElementById('statusDot');
 const elStatusText = document.getElementById('statusText');
 const elRefreshBtn = document.getElementById('refreshBtn');
-const elDebug = document.getElementById('debugContent');
-const elDebugPanel = document.getElementById('debugPanel');
 
 // ===== UTILITY FUNCTIONS =====
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return Number(n).toLocaleString('id-ID',{maximumFractionDigits:0}); }
@@ -188,43 +197,98 @@ function fmtPct(n){ if(n===null||n===undefined||isNaN(n)) return '–'; return N
 function escapeHtml(str){ if(str===null||str===undefined) return ''; return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function toNum(s){
-if (s===undefined||s===null) return null;
-s = String(s).trim();
-if (s === '') return null;
-s = s.replace(/\./g, '').replace(/,/g, '.');
-const n = parseFloat(s);
-return isNaN(n) ? null : n;
+    if (s===undefined||s===null) return null;
+    s = String(s).trim();
+    if (s === '') return null;
+    // Buang karakter selain digit, titik, koma, dan minus (mis. spasi, Rp, dsb)
+    s = s.replace(/[^\d.,\-]/g, '');
+    if (s === '') return null;
+
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    let decSep = null; // pemisah desimal yang terdeteksi, null = anggap semua pemisah grouping (ribuan)
+
+    if (lastDot > -1 && lastComma > -1) {
+        // Ada keduanya -> yang paling kanan adalah pemisah desimal, sisanya ribuan
+        decSep = lastComma > lastDot ? ',' : '.';
+    } else if (lastComma > -1 || lastDot > -1) {
+        const sep = lastComma > -1 ? ',' : '.';
+        const lastIdx = lastComma > -1 ? lastComma : lastDot;
+        const tail = s.slice(lastIdx + 1);
+        const sepCount = s.split(sep).length - 1;
+        // Jika hanya satu pemisah dan diikuti TEPAT 3 digit -> kemungkinan besar ribuan (cth "1,000" / "1.000")
+        // Jika diikuti 1-2 digit -> desimal (cth "12,5" / "0.50")
+        // Jika lebih dari satu pemisah dengan 3 digit tiap grup -> ribuan bertingkat (cth "1.234.567")
+        if (tail.length === 3 && sepCount === 1) {
+            decSep = null; // anggap ribuan, BUKAN desimal -> "1,000" tetap 1000, bukan 1
+        } else if (tail.length >= 1 && tail.length <= 2) {
+            decSep = sep; // desimal
+        } else {
+            decSep = null; // grouping ribuan
+        }
+    }
+
+    let cleaned;
+    if (decSep === ',') {
+        cleaned = s.replace(/\./g, '').replace(/,/g, '.');
+    } else if (decSep === '.') {
+        cleaned = s.replace(/,/g, '');
+    } else {
+        // Tidak ada pemisah desimal yang jelas -> buang semua titik/koma (anggap pemisah ribuan)
+        cleaned = s.replace(/[.,]/g, '');
+    }
+
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? null : n;
 }
 
 function parseCSV(text) {
+    // Parser karakter-per-karakter untuk SELURUH teks (bukan split per baris dulu).
+    // Ini penting karena split('\n') sebelum memproses tanda kutip akan memecah baris
+    // secara keliru jika ada sel (mis. kolom keterangan/GC) yang berisi newline atau
+    // koma di dalam tanda kutip -- akibatnya kolom-kolom sesudahnya (termasuk BB) ikut bergeser/hilang.
     const rows = [];
-    const lines = text.split('\n');
-    for (let line of lines) {
-        line = line.trim();
-        if (line === '') continue;
-        const fields = [];
-        let current = '';
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (inQuotes) {
             if (char === '"') {
-                if (inQuotes && line[i+1] === '"') {
-                    current += '"';
-                    i++;
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (char === ',' && !inQuotes) {
-                fields.push(current.trim());
-                current = '';
+                if (text[i + 1] === '"') { field += '"'; i++; }
+                else { inQuotes = false; }
             } else {
-                current += char;
+                field += char;
             }
+            continue;
         }
-        fields.push(current.trim());
-        rows.push(fields);
+
+        if (char === '"') {
+            inQuotes = true;
+        } else if (char === ',') {
+            row.push(field.trim());
+            field = '';
+        } else if (char === '\r') {
+            // dilewati, ditangani via \n
+        } else if (char === '\n') {
+            row.push(field.trim());
+            field = '';
+            rows.push(row);
+            row = [];
+        } else {
+            field += char;
+        }
     }
-    return rows;
+    // Dorong field/baris terakhir jika file tidak diakhiri newline
+    if (field.length > 0 || row.length > 0) {
+        row.push(field.trim());
+        rows.push(row);
+    }
+
+    // Buang baris yang benar-benar kosong (hasil baris blank di CSV)
+    return rows.filter(r => !(r.length === 1 && r[0] === ''));
 }
 
 function setStatus(state, text){
@@ -314,9 +378,6 @@ async function loadUpdateInfo() {
     }
 }
 
-// ============================================================
-// FUNGSI LOAD GC DATA - DIPERBAIKI
-// ============================================================
 async function loadGCData() {
     try {
         const url = PROXY_URL + encodeURIComponent(CSV_URL_GC + '&_=' + Date.now());
@@ -324,80 +385,51 @@ async function loadGCData() {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
         const grid = parseCSV(text);
-        
+
         gcMap = {};
-        DEBUG_GC = [];
-        
-        // Cari baris header untuk identifikasi kolom
-        let headerRowIdx = -1;
-        let idsubColIdx = -1;
-        let ketGCColIdx = -1;
-        
-        for (let i = 0; i < Math.min(30, grid.length); i++) {
-            const row = grid[i];
-            if (!row || row.length === 0) continue;
-            const rowStr = row.join(',').toLowerCase();
-            // Cari header yang mengandung kata kunci ID atau subsls
-            if (rowStr.includes('id') || rowStr.includes('subsls') || rowStr.includes('region')) {
-                headerRowIdx = i;
-                // Identifikasi indeks kolom
-                for (let j = 0; j < row.length; j++) {
-                    const colName = String(row[j] || '').toLowerCase().trim();
-                    if (colName.includes('id') && colName.includes('sub')) {
-                        idsubColIdx = j;
-                    }
-                    // Kolom BB = indeks 53, tapi kita coba cari juga dari header
-                    if (j === 53 || colName.includes('ket') || colName.includes('gc') || colName.includes('bb')) {
-                        if (ketGCColIdx === -1) ketGCColIdx = j;
-                    }
-                }
-                break;
+        if (grid.length === 0) return;
+
+        // Default: Kolom AQ = ID SUBSLS (indeks 42), Kolom BB = Keterangan GC (indeks 53)
+        let idsubColIdx = 42;
+        let gcColIdx = 53;
+
+        // Coba deteksi otomatis dari baris header (kalau ada teks header yang cocok),
+        // supaya kalau urutan kolom di sheet berubah, lookup GC tidak ikut rusak.
+        const headerRow = grid[0] || [];
+        headerRow.forEach((h, i) => {
+            const hLow = String(h || '').toLowerCase().trim();
+            if (hLow === 'id subsls' || hLow === 'idsubsls' || hLow === 'id_subsls') idsubColIdx = i;
+            if (hLow.includes('ket') && hLow.includes('gc')) gcColIdx = i;
+            else if (hLow === 'gc' || hLow === 'keterangan gc') gcColIdx = i;
+        });
+
+        const maxIdx = Math.max(idsubColIdx, gcColIdx);
+        let matched = 0;
+
+        for (let i = 0; i < grid.length; i++) {
+            let cols = grid[i];
+            if (!cols) continue;
+            // Padding: jika baris lebih pendek dari kolom yang dibutuhkan (kolom kosong di akhir
+            // kadang ikut terpotong saat export CSV), isi dengan string kosong agar tidak hilang begitu saja.
+            if (cols.length <= maxIdx) {
+                cols = cols.concat(new Array(maxIdx - cols.length + 1).fill(''));
+            }
+
+            const idsub = String(cols[idsubColIdx] || '').trim();
+            const ketGC = String(cols[gcColIdx] || '').trim();
+
+            if (idsub && !['nip','region_code','id subsls','idsubsls'].includes(idsub.toLowerCase())) {
+                gcMap[idsub] = ketGC;
+                matched++;
             }
         }
-        
-        // Jika tidak ketemu header, gunakan default
-        if (idsubColIdx === -1) idsubColIdx = 42; // Kolom AQ
-        if (ketGCColIdx === -1) ketGCColIdx = 53; // Kolom BB
-        
-        console.log('🔍 GC Header Row:', headerRowIdx, '| ID col:', idsubColIdx, '| Ket GC col:', ketGCColIdx);
-        
-        const startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
-        
-        for (let i = startRow; i < grid.length; i++) {
-            const cols = grid[i];
-            if (!cols || cols.length < Math.max(idsubColIdx, ketGCColIdx) + 1) continue;
-            
-            const idsub = String(cols[idsubColIdx] || '').trim();
-            const ketGC = String(cols[ketGCColIdx] || '').trim();
-            
-            // Skip header-like rows dan baris kosong
-            if (!idsub || idsub.toLowerCase() === 'nip' || idsub.toLowerCase() === 'region_code' || idsub.toLowerCase() === 'id subsls' || idsub.toLowerCase() === 'id') continue;
-            if (idsub === '-') continue;
-            
-            // Normalisasi key: hapus semua whitespace dan convert ke string
-            const normalizedKey = idsub.replace(/\s/g, '');
-            gcMap[normalizedKey] = ketGC;
-            
-            // Simpan untuk debug
-            DEBUG_GC.push({row: i, idsub: idsub, ketGC: ketGC, rawId: cols[idsubColIdx], rawKet: cols[ketGCColIdx]});
-        }
-        
-        console.log('✅ GC Map loaded:', Object.keys(gcMap).length, 'entries');
-        console.log('📊 Sample GC entries:', DEBUG_GC.slice(0, 5));
-        
-        // Update debug panel
-        elDebug.innerHTML = `GC Entries: ${Object.keys(gcMap).length}<br>ID Col: ${idsubColIdx}, Ket Col: ${ketGCColIdx}<br>Samples:<br>` + 
-            DEBUG_GC.slice(0, 10).map(d => `${d.idsub} = ${d.ketGC}`).join('<br>');
-        
+
+        console.info('[GC] Kolom ID SUBSLS terdeteksi di indeks ' + idsubColIdx + ', Kolom Ket.GC di indeks ' + gcColIdx + ' · ' + matched + ' baris terpetakan.');
     } catch (err) {
         console.error('❌ Gagal memuat sheet GC:', err);
-        elDebug.innerHTML = 'Error: ' + err.message;
     }
 }
 
-// ============================================================
-// FUNGSI LOAD DATA UTAMA - DIPERBAIKI
-// ============================================================
 async function loadData(){
     setStatus('loading', 'Memuat data terbaru…');
     elInput.disabled = true;
@@ -421,21 +453,6 @@ async function loadData(){
         if (headerRowIdx === -1) headerRowIdx = 0;
         
         const rows = [];
-        let idsubColIdx = 42; // Default kolom AQ
-        
-        // Coba identifikasi kolom idsubsls dari header
-        if (headerRowIdx >= 0 && grid[headerRowIdx]) {
-            const headerRow = grid[headerRowIdx];
-            for (let j = 0; j < headerRow.length; j++) {
-                const h = String(headerRow[j] || '').toLowerCase();
-                if (h.includes('id') && h.includes('sub')) {
-                    idsubColIdx = j;
-                    break;
-                }
-            }
-        }
-        console.log('🔍 Main sheet ID SUBSLS column index:', idsubColIdx);
-        
         for (let r = headerRowIdx + 1; r < grid.length; r++){
             const cols = grid[r];
             if (!cols || cols.length < 5) continue;
@@ -445,10 +462,10 @@ async function loadData(){
             const pml = (cols[2]||'').trim();
             const ppl = (cols[4]||'').trim();
             
-            // Ambil idsubsls dari kolom yang teridentifikasi
+            // PERBAIKAN: Gunakan pembacaan yang lebih aman tanpa memotong batasan length yang ketat
             let idsubsls = '';
-            if (cols.length > idsubColIdx) {
-                idsubsls = String(cols[idsubColIdx] || '').trim();
+            if (cols.length > 42) {
+                idsubsls = String(cols[42] || '').trim();
             }
             
             if (!pml || !ppl) continue;
@@ -495,9 +512,6 @@ function renderNotFound(nip){
     elResult.innerHTML = '<div class="not-found">❌ NIP "' + escapeHtml(nip) + '" tidak ditemukan dalam daftar Task Force.</div>';
 }
 
-// ============================================================
-// FUNGSI RENDER RESULT - DIPERBAIKI UNTUK GC
-// ============================================================
 function renderResult(nip, tfName){
     const tfNameNorm = tfName.trim();
     const teamRows = DATA.filter(r => r.tf.trim().toUpperCase() === tfNameNorm.toUpperCase());
@@ -520,6 +534,8 @@ function renderResult(nip, tfName){
         const pmlTarget = pplRows.reduce((s,r)=> s + (r.target||0), 0);
         const pmlKirim = pplRows.reduce((s,r)=> s + (r.kirim||0), 0);
         const pmlPersen = pmlTarget > 0 ? (pmlKirim/pmlTarget*100) : 0;
+        const pmlDraft = pplRows.reduce((s,r)=> s + (r.draft||0), 0);
+        const pmlPersenKD = pmlTarget > 0 ? (((pmlKirim + pmlDraft) / pmlTarget) * 100) : 0;
         
         const pplGroups = {};
         pplRows.forEach(r => {
@@ -542,45 +558,36 @@ function renderResult(nip, tfName){
             const idsubRowsHtml = idsubRows.map(r => {
                 const pct = r.target > 0 ? (r.kirim / r.target * 100) : 0;
                 const pctClassSub = pct < 2 ? 'low' : '';
+                const pctKD = r.target > 0 ? (((r.kirim||0) + (r.draft||0)) / r.target * 100) : 0;
+                const pctClassSubKD = pctKD < 2 ? 'low' : '';
                 
-                // Normalisasi ID untuk lookup
-                const rawIdSub = String(r.idsubsls || '').trim();
-                let finalIdSubsls = rawIdSub;
+                // Ambil ID dan bersihkan strip bawaan jika ada
+                let finalIdSubsls = String(r.idsubsls || '').trim();
                 if (!finalIdSubsls || finalIdSubsls === '-') {
                     finalIdSubsls = '<span style="color:#aaa; font-style:italic;">Kosong</span>';
                 }
                 
-                // ============================================================
-                // LOOKUP GC - DIPERBAIKI DENGAN NORMALISASI KEY
-                // ============================================================
                 let gcKeterangan = '<span style="color:#aaa;">-</span>';
+                const lookupKey = String(r.idsubsls || '').trim();
                 
-                if (rawIdSub && rawIdSub !== '-') {
-                    // Normalisasi key: hapus semua whitespace
-                    const lookupKey = rawIdSub.replace(/\s/g, '');
-                    const gcVal = gcMap[lookupKey];
-                    
-                    console.log('🔍 Looking up GC for:', rawIdSub, '(normalized:', lookupKey + ')', '=> Found:', gcVal);
-                    
-                    if (gcVal !== undefined) {
-                        const gcValStr = String(gcVal).trim();
-                        if (gcValStr === '1') {
-                            gcKeterangan = '<span class="gc-badge gc-1">1</span>';
-                        } else if (gcValStr === '0') {
-                            gcKeterangan = '<span class="gc-badge gc-0">0</span>';
-                        } else if (gcValStr !== '' && gcValStr !== '-') {
-                            gcKeterangan = escapeHtml(gcValStr);
-                        }
+                if (lookupKey && lookupKey !== '-') {
+                    const gcVal = gcMap[lookupKey] !== undefined ? String(gcMap[lookupKey]).trim() : '';
+                    if (gcVal === '1') {
+                        gcKeterangan = '<span class="gc-badge gc-1">1</span>';
+                    } else if (gcVal === '0') {
+                        gcKeterangan = '<span class="gc-badge gc-0">0</span>';
+                    } else if (gcVal !== '' && gcVal !== '-') {
+                        gcKeterangan = escapeHtml(gcVal);
                     }
                 }
                 
-                return '<tr><td>' + finalIdSubsls + '</td><td>' + gcKeterangan + '</td><td class="num">' + fmt(r.target) + '</td><td class="num">' + fmt(r.kirim) + '</td><td class="num">' + fmt(r.draft) + '</td><td class="num">' + fmtDec(r.rata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassSub + '" style="width:' + Math.min(pct,100) + '%"></span></span></div></td></tr>';
+                return '<tr><td>' + finalIdSubsls + '</td><td>' + gcKeterangan + '</td><td class="num">' + fmt(r.target) + '</td><td class="num">' + fmt(r.kirim) + '</td><td class="num">' + fmt(r.draft) + '</td><td class="num">' + fmtDec(r.rata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pct) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassSub + '" style="width:' + Math.min(pct,100) + '%"></span></span></div></td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pctKD) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassSubKD + '" style="width:' + Math.min(pctKD,100) + '%"></span></span></div></td></tr>';
             }).join('');
             
-            return '<tr class="ppl-row-expandable"><td><span class="chevron-small">▾</span> ' + escapeHtml(pplName) + ' ' + getUpdateBadge('ppl') + '</td><td class="num">' + fmt(pplTarget) + '</td><td class="num">' + fmt(pplKirim) + '</td><td class="num">' + fmt(pplDraft) + '</td><td class="num">' + fmtDec(pplRata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pplPersenKirim) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassKirim + '" style="width:' + Math.min(pplPersenKirim,100) + '%"></span></span></div></td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pplPersenKirimDraft) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassKirimDraft + '" style="width:' + Math.min(pplPersenKirimDraft,100) + '%"></span></span></div></td></tr><tr class="ppl-detail-row" style="display:none;"><td colspan="7" style="padding: 0 12px 12px 12px; background: #fbfaf6;"><table class="idsubsls-table"><thead><tr><th>ID SUBSLS</th><th>Ket. GC</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Persentase</th></tr></thead><tbody>' + idsubRowsHtml + '</tbody></table></td></tr>';
+            return '<tr class="ppl-row-expandable"><td><span class="chevron-small">▾</span> ' + escapeHtml(pplName) + ' ' + getUpdateBadge('ppl') + '</td><td class="num">' + fmt(pplTarget) + '</td><td class="num">' + fmt(pplKirim) + '</td><td class="num">' + fmt(pplDraft) + '</td><td class="num">' + fmtDec(pplRata) + '</td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pplPersenKirim) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassKirim + '" style="width:' + Math.min(pplPersenKirim,100) + '%"></span></span></div></td><td class="num"><div class="pct-bar-cell"><span>' + fmtPct(pplPersenKirimDraft) + '</span><span class="pct-track"><span class="pct-fill ' + pctClassKirimDraft + '" style="width:' + Math.min(pplPersenKirimDraft,100) + '%"></span></span></div></td></tr><tr class="ppl-detail-row" style="display:none;"><td colspan="7" style="padding: 0 12px 12px 12px; background: #fbfaf6;"><div class="table-scroll"><table class="idsubsls-table"><thead><tr><th>ID SUBSLS</th><th>Ket. GC</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Progress Kirim</th><th class="num">Progress Kirim+Draft</th></tr></thead><tbody>' + idsubRowsHtml + '</tbody></table></div></td></tr>';
         }).join('');
         
-        return '<div class="pml-card" data-idx="' + idx + '"><div class="pml-card-top"><div class="pml-name-block"><p class="pml-name">' + escapeHtml(pmlName) + ' ' + getUpdateBadge('pml') + '</p><div class="pml-meta"><span><b>' + Object.keys(pplGroups).length + '</b> PPL</span><span>Progress: <b>' + fmtPct(pmlPersen) + '</b></span></div></div><div class="pml-mini-stats"><div class="mini-stat"><span class="num">' + fmt(pmlTarget) + '</span><span class="lbl">Target</span></div><div class="mini-stat"><span class="num">' + fmt(pmlKirim) + '</span><span class="lbl">Dikirim</span></div></div><div class="chevron">▾</div></div><div class="detail-wrap"><div class="detail-inner"><table class="ppl-table"><caption>Seluruh PPL di bawah ' + escapeHtml(pmlName) + '</caption><thead><tr><th>PPL</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Progress Kirim</th><th class="num">Progress Kirim+Draft</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div></div></div>';
+        return '<div class="pml-card" data-idx="' + idx + '"><div class="pml-card-top"><div class="pml-name-block"><p class="pml-name">' + escapeHtml(pmlName) + ' ' + getUpdateBadge('pml') + '</p><div class="pml-meta"><span><b>' + Object.keys(pplGroups).length + '</b> PPL</span><span>Kirim: <b>' + fmtPct(pmlPersen) + '</b></span><span>Kirim+Draft: <b>' + fmtPct(pmlPersenKD) + '</b></span></div></div><div class="pml-mini-stats"><div class="mini-stat"><span class="num">' + fmt(pmlTarget) + '</span><span class="lbl">Target</span></div><div class="mini-stat"><span class="num">' + fmt(pmlKirim) + '</span><span class="lbl">Dikirim</span></div></div><div class="chevron">▾</div></div><div class="detail-wrap"><div class="detail-inner"><div class="table-scroll"><table class="ppl-table"><caption>Seluruh PPL di bawah ' + escapeHtml(pmlName) + '</caption><thead><tr><th>PPL</th><th class="num">Target</th><th class="num">Dikirim</th><th class="num">Draft</th><th class="num">Rata²/Hari</th><th class="num">Progress Kirim</th><th class="num">Progress Kirim+Draft</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div></div></div></div>';
     }).join('');
     
     elResult.innerHTML = '<div class="tf-header"><div class="tf-id">' + escapeHtml(kec) + ' · NIP ' + escapeHtml(nip) + '</div><p class="tf-name">' + escapeHtml(tfNameNorm) + ' ' + getUpdateBadge('tf') + '</p><div class="tf-stats"><div class="stat"><span class="num">' + Object.keys(pmlGroups).length + '</span><span class="lbl">PML</span></div><div class="stat"><span class="num">' + teamRows.length + '</span><span class="lbl">Total PPL</span></div><div class="stat"><span class="num">' + fmt(totalTarget) + '</span><span class="lbl">Target</span></div><div class="stat"><span class="num">' + fmt(totalKirim) + '</span><span class="lbl">Dikirim</span></div><div class="stat"><span class="num">' + fmt(totalDraft) + '</span><span class="lbl">Draft</span></div><div class="stat"><span class="num">' + fmtPct(avgPersen) + '</span><span class="lbl">Progress</span></div><div class="stat"><span class="num">' + fmtPct(progressIncDraft) + '</span><span class="lbl">Prog. + Draft</span></div></div></div><div class="pml-list">' + pmlCardsHtml + '</div>';
@@ -642,14 +649,6 @@ elRefreshBtn.addEventListener('click', () => {
     loadUpdateInfo().then(() => {
         loadGCData().finally(() => loadData());
     });
-});
-
-// Toggle debug panel dengan tombol 'd'
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'd' && e.ctrlKey) {
-        e.preventDefault();
-        elDebugPanel.style.display = elDebugPanel.style.display === 'none' ? 'block' : 'none';
-    }
 });
 
 // ===== STARTUP =====
