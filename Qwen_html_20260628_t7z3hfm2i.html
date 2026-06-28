@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Pendataan SE2026 — Kota Banjarmasin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-header {
+            background: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            color: white;
+            padding: 2rem 0 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .periode-text {
+            font-size: 1rem;
+            margin-top: 8px;
+            opacity: 0.95;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 2px solid #f0f0f0;
+            font-weight: 600;
+            color: #333;
+        }
+        .info-card {
+            background: linear-gradient(135deg, #e7f1ff, #f8f9fa);
+            border-left: 5px solid #0d6efd;
+            padding: 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .info-card h6 {
+            color: #084298;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .info-card p {
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 0.95rem;
+        }
+        .info-card ul {
+            padding-left: 1.2rem;
+            margin-bottom: 0;
+            color: #495057;
+        }
+        .info-card ul li { margin-bottom: 4px; }
+
+        .sandbox-card {
+            background: linear-gradient(135deg, #fff, #f8f9fa);
+            border-left: 5px solid #0d6efd;
+        }
+        .sandbox-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0d6efd;
+        }
+        .sandbox-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .table th {
+            background-color: #f1f3f5;
+            color: #495057;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .progress-bar-custom {
+            height: 20px;
+            border-radius: 10px;
+        }
+        .filter-section {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+        .hidden { display: none; }
+        
+        .row-taskforce {
+            background-color: #0d6efd !important;
+            color: white;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+        .row-taskforce td { border-top: 2px solid #084298; }
+        .row-pml {
+            background-color: #cfe2ff !important;
+            font-weight: 600;
+            color: #084298;
+        }
+        .row-pml td:first-child { padding-left: 2.5rem; }
+        .row-ppl td:first-child { padding-left: 4.5rem; }
+        
+        .name-cell { min-width: 220px; }
+        .badge-level {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            margin-right: 6px;
+        }
+        
+        .nip-reminder {
+            background: linear-gradient(135deg, #fff3cd, #ffe69c);
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 0.88rem;
+            color: #664d03;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .nip-reminder i { font-size: 1.1rem; margin-top: 2px; }
+        .remember-check {
+            background-color: #f8f9fa;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px dashed #0d6efd;
+        }
+        .saved-badge {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .id-sls {
+            font-family: 'Courier New', monospace;
+            background-color: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #495057;
+        }
+        .ket-gc {
+            font-size: 0.85rem;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header: Periode Update sebagai TEKS BIASA (bukan badge) -->
+    <div class="dashboard-header text-center">
+        <div class="container">
+            <h1 class="mb-1"><i class="bi bi-bar-chart-line-fill"></i> Monitoring Pendataan SE2026</h1>
+            <h5 class="mb-0 fw-normal" style="opacity: 0.95;">Kota Banjarmasin · Kab/Kota 6371</h5>
+            <div class="periode-text" id="periodeUpdate">
+                <i class="bi bi-clock-fill"></i> Memuat periode update...
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Card Penjelasan -->
+        <div class="info-card">
+            <h6><i class="bi bi-info-circle-fill"></i> Panduan Penggunaan Dashboard</h6>
+            <p class="mb-2">Dashboard ini menampilkan <strong>progress pendataan Sensus Ekonomi 2026</strong> untuk seluruh PML dan PPL di wilayah Kota Banjarmasin. Data diambil langsung dari Google Sheets secara <em>real-time</em> saat halaman dibuka.</p>
+            <p class="mb-2"><strong>Cara menggunakan:</strong></p>
+            <ul>
+                <li>Masukkan <strong>NIP Task Force</strong> Anda pada kolom di bawah, lalu klik <em>Cari</em>.</li>
+                <li>Dashboard akan menampilkan <strong>ringkasan total Task Force</strong> Anda (Sandbox) beserta daftar PML dan PPL secara hierarkis.</li>
+                <li>Gunakan <strong>dropdown PPL</strong> untuk melihat detail satu PPL tertentu, termasuk <strong>ID SUB SLS</strong> dan <strong>Keterangan GC</strong>.</li>
+                <li>NIP Anda dapat disimpan di perangkat ini agar tidak perlu mengetik ulang di kemudian hari.</li>
+            </ul>
+        </div>
+
+        <!-- NIP Input -->
+        <div class="filter-section">
+            <h5 class="mb-3"><i class="bi bi-person-badge"></i> Masuk dengan NIP Task Force</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="inputNIP" class="form-label">NIP Task Force</label>
+                    <input type="text" class="form-control" id="inputNIP" placeholder="Contoh: 1985xxxxxxxxxxxx">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100" onclick="cariNIP()">
+                        <i class="bi bi-search"></i> Cari Data
+                    </button>
+                </div>
+            </div>
+
+            <div class="remember-check">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="rememberNIP" checked>
+                    <label class="form-check-label" for="rememberNIP">
+                        <i class="bi bi-bookmark-check-fill text-primary"></i>
+                        <strong>Ingat NIP saya</strong> di perangkat ini
+                    </label>
+                </div>
+            </div>
+
+            <div class="nip-reminder">
+                <i class="bi bi-info-circle-fill"></i>
+                <div>
+                    <strong>Pengingat Privasi:</strong> Jika Anda mencentang "Ingat NIP saya", NIP akan disimpan di memori lokal perangkat (browser/HP) Anda. Data hanya tersimpan di perangkat ini dan <strong>bukan di server</strong>. Anda dapat menghapusnya kapan saja dengan menekan tombol <strong>Reset</strong>.
+                </div>
+            </div>
+
+            <div id="nipSavedNotif" class="hidden" style="margin-top: 12px;">
+                <span class="saved-badge">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span id="savedNIPText">NIP tersimpan</span>
+                </span>
+            </div>
+
+            <div id="nipError" class="text-danger mt-2 hidden">NIP tidak ditemukan dalam data.</div>
+        </div>
+
+        <!-- Sandbox Taskforce -->
+        <div id="sandboxSection" class="hidden">
+            <div class="card sandbox-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-speedometer2"></i> 📊 Ringkasan Task Force</span>
+                    <span id="sandboxTFName" class="badge bg-primary"></span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 text-center">
+                        <div class="col-md col-6">
+                            <div class="sandbox-label">Target</div>
+                            <div class="sandbox-value" id="sbTarget">0</div>
+                        </div>
+                        <div class="col-md col-6">
+                            <div class="sandbox-label">Jumlah Kirim</div>
+                            <div class="sandbox-value" id="sbKirim" style="color:#198754;">0</div>
+                        </div>
+                        <div class="col-md col-6">
+                            <div class="sandbox-label">Jumlah Draft</div>
+                            <div class="sandbox-value" id="sbDraft" style="color:#ffc107;">0</div>
+                        </div>
+                        <div class="col-md col-6">
+                            <div class="sandbox-label">Progres Kirim</div>
+                            <div class="sandbox-value" id="sbProgresKirim">0%</div>
+                        </div>
+                        <div class="col-md col-6">
+                            <div class="sandbox-label">Progres Kirim+Draft</div>
+                            <div class="sandbox-value" id="sbProgresTotal">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dropdown PPL -->
+        <div id="pplDropdownSection" class="filter-section hidden">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="filterPPL" class="form-label"><i class="bi bi-funnel"></i> Pilih PPL untuk melihat detail (ID SUB SLS & KET GC)</label>
+                    <select class="form-select" id="filterPPL" onchange="renderTable()">
+                        <option value="">-- Tampilkan Semua (Struktur Hierarki) --</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-secondary w-100" onclick="resetAll()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="card hidden" id="tableCard">
+            <div class="card-header">
+                <i class="bi bi-table"></i> 📋 Hasil Monitoring Pelaksanaan Lapangan
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="dataTable">
+                        <thead id="tableHead"></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let allData = [];
+        let filteredByNIP = [];
+        let currentTaskforce = "";
+        let dataLoaded = false;
+
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXpVwhWEVGDNmGefdCjapaDYWD_b7V_KOdhpdIE2ZB2SzAmxD4u2oplc5rSzOyTGLm-0F-9XBxm8ja/pub?gid=2111234947&single=true&output=csv";
+        const STORAGE_KEY = "se2026_bjm_saved_nip";
+
+        async function fetchCSV() {
+            try {
+                const response = await fetch(CSV_URL, { method: 'GET', mode: 'cors' });
+                if (response.ok) return await response.text();
+            } catch (e) {
+                console.log("Direct fetch blocked, trying proxy...");
+            }
+            const proxyUrl = "https://corsproxy.io/?";
+            try {
+                const proxyResponse = await fetch(proxyUrl + encodeURIComponent(CSV_URL));
+                if (proxyResponse.ok) return await proxyResponse.text();
+            } catch (e) {
+                console.error("Proxy fetch failed.");
+            }
+            throw new Error("Gagal mengambil data.");
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            loadSavedNIP();
+
+            try {
+                const csvText = await fetchCSV();
+                Papa.parse(csvText, {
+                    header: false,
+                    complete: function(results) {
+                        if (results.data.length > 0) {
+                            const periode = results.data[0][0] || "Tidak ada data";
+                            document.getElementById('periodeUpdate').innerHTML = 
+                                `<i class="bi bi-clock-fill"></i> Periode Update: <strong>${periode}</strong>`;
+                            allData = results.data.slice(2).filter(row => row.length > 0 && row[0]);
+                            dataLoaded = true;
+
+                            const savedNIP = localStorage.getItem(STORAGE_KEY);
+                            if (savedNIP) {
+                                document.getElementById('inputNIP').value = savedNIP;
+                                document.getElementById('rememberNIP').checked = true;
+                                cariNIP();
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                document.getElementById('periodeUpdate').innerHTML = 
+                    `<i class="bi bi-exclamation-triangle-fill"></i> Gagal memuat data. Periksa koneksi internet.`;
+            }
+        });
+
+        function loadSavedNIP() {
+            const savedNIP = localStorage.getItem(STORAGE_KEY);
+            if (savedNIP) {
+                document.getElementById('inputNIP').value = savedNIP;
+                document.getElementById('rememberNIP').checked = true;
+                document.getElementById('nipSavedNotif').classList.remove('hidden');
+                document.getElementById('savedNIPText').innerText = 
+                    `NIP tersimpan di perangkat ini: ${savedNIP}`;
+            }
+        }
+
+        function saveNIPToMemory(nip) {
+            const remember = document.getElementById('rememberNIP').checked;
+            if (remember) {
+                localStorage.setItem(STORAGE_KEY, nip);
+                document.getElementById('nipSavedNotif').classList.remove('hidden');
+                document.getElementById('savedNIPText').innerText = 
+                    `✓ NIP ${nip} berhasil disimpan di memori perangkat`;
+            } else {
+                localStorage.removeItem(STORAGE_KEY);
+                document.getElementById('nipSavedNotif').classList.add('hidden');
+            }
+        }
+
+        function clearSavedNIP() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('nipSavedNotif').classList.add('hidden');
+        }
+
+        function parseNumber(str) {
+            if (!str) return 0;
+            str = str.toString().trim();
+            if (!str) return 0;
+            if (str.includes(',') && str.includes('.')) {
+                str = str.replace(/\./g, '').replace(',', '.');
+            } else if (str.includes(',')) {
+                str = str.replace(',', '.');
+            } else if ((str.match(/\./g) || []).length > 1) {
+                str = str.replace(/\./g, '');
+            }
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function sumField(rows, colIndex) {
+            return rows.reduce((sum, r) => sum + parseNumber(r[colIndex]), 0);
+        }
+
+        function cariNIP() {
+            const nip = document.getElementById('inputNIP').value.trim();
+            const errorDiv = document.getElementById('nipError');
+            if (!nip) {
+                errorDiv.innerText = "Silakan masukkan NIP.";
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (!dataLoaded) {
+                errorDiv.innerText = "Data masih dimuat, silakan coba lagi dalam beberapa detik.";
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            filteredByNIP = allData.filter(row => row[51] && row[51].toString().trim() === nip);
+
+            if (filteredByNIP.length === 0) {
+                errorDiv.innerText = "NIP tidak ditemukan dalam data.";
+                errorDiv.classList.remove('hidden');
+                document.getElementById('sandboxSection').classList.add('hidden');
+                document.getElementById('pplDropdownSection').classList.add('hidden');
+                document.getElementById('tableCard').classList.add('hidden');
+                clearSavedNIP();
+            } else {
+                errorDiv.classList.add('hidden');
+                saveNIPToMemory(nip);
+
+                currentTaskforce = filteredByNIP[0][1] || "Task Force";
+                document.getElementById('sandboxTFName').innerText = currentTaskforce;
+                
+                updateSandbox();
+                updatePPLDropdown();
+                renderTable();
+                
+                document.getElementById('sandboxSection').classList.remove('hidden');
+                document.getElementById('pplDropdownSection').classList.remove('hidden');
+                document.getElementById('tableCard').classList.remove('hidden');
+            }
+        }
+
+        function updateSandbox() {
+            const target = sumField(filteredByNIP, 5);
+            const kirim = sumField(filteredByNIP, 6);
+            const draft = sumField(filteredByNIP, 7);
+            const progresKirim = target > 0 ? (kirim / target) * 100 : 0;
+            const progresTotal = target > 0 ? ((kirim + draft) / target) * 100 : 0;
+
+            document.getElementById('sbTarget').innerText = target.toLocaleString('id-ID');
+            document.getElementById('sbKirim').innerText = kirim.toLocaleString('id-ID');
+            document.getElementById('sbDraft').innerText = draft.toLocaleString('id-ID');
+            document.getElementById('sbProgresKirim').innerText = progresKirim.toFixed(2) + '%';
+            document.getElementById('sbProgresTotal').innerText = progresTotal.toFixed(2) + '%';
+        }
+
+        function updatePPLDropdown() {
+            const dropdown = document.getElementById('filterPPL');
+            const uniquePPL = [...new Set(filteredByNIP.map(row => row[4]).filter(val => val))];
+            dropdown.innerHTML = '<option value="">-- Tampilkan Semua (Struktur Hierarki) --</option>';
+            uniquePPL.sort().forEach(ppl => {
+                dropdown.innerHTML += `<option value="${ppl}">${ppl}</option>`;
+            });
+        }
+
+        function makeProgressBar(progres) {
+            const color = progres >= 100 ? 'bg-success' : (progres >= 50 ? 'bg-warning text-dark' : 'bg-danger');
+            return `
+                <div class="d-flex align-items-center">
+                    <div class="progress flex-grow-1 me-2 progress-bar-custom">
+                        <div class="progress-bar ${color}" role="progressbar" style="width: ${Math.min(progres, 100)}%"></div>
+                    </div>
+                    <span class="fw-bold" style="min-width: 65px;">${progres.toFixed(2)}%</span>
+                </div>
+            `;
+        }
+
+        function renderTableHead(mode) {
+            const thead = document.getElementById('tableHead');
+            if (mode === 'ppl') {
+                thead.innerHTML = `
+                    <tr>
+                        <th class="name-cell">Nama PPL</th>
+                        <th>ID SUB SLS</th>
+                        <th>Target (F)</th>
+                        <th>Kirim (G)</th>
+                        <th>Draft (H)</th>
+                        <th>Rata-Rata/Hari (I)</th>
+                        <th>Persentase (J)</th>
+                        <th>Progres ((G+H)/F)</th>
+                        <th>KET GC</th>
+                    </tr>
+                `;
+            } else {
+                thead.innerHTML = `
+                    <tr>
+                        <th class="name-cell">Nama / Level</th>
+                        <th>Target (F)</th>
+                        <th>Kirim (G)</th>
+                        <th>Draft (H)</th>
+                        <th>Rata-Rata/Hari (I)</th>
+                        <th>Persentase (J)</th>
+                        <th>Progres ((G+H)/F)</th>
+                        <th>BB</th>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderTable() {
+            const selectedPPL = document.getElementById('filterPPL').value;
+            let dataToShow = filteredByNIP;
+            if (selectedPPL) dataToShow = filteredByNIP.filter(r => r[4] === selectedPPL);
+
+            const tbody = document.getElementById('dataTable').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            if (dataToShow.length === 0) {
+                renderTableHead('default');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tidak ada data.</td></tr>';
+                return;
+            }
+
+            if (selectedPPL) {
+                renderTableHead('ppl');
+                dataToShow.forEach(row => tbody.appendChild(buildPPLDetailRow(row)));
+                return;
+            }
+
+            renderTableHead('default');
+            tbody.appendChild(buildTaskforceRow(filteredByNIP));
+
+            const pmlGroups = {};
+            filteredByNIP.forEach(row => {
+                const pml = row[2] || '(Tanpa PML)';
+                if (!pmlGroups[pml]) pmlGroups[pml] = [];
+                pmlGroups[pml].push(row);
+            });
+
+            Object.keys(pmlGroups).sort().forEach(pml => {
+                const pmlRows = pmlGroups[pml];
+                tbody.appendChild(buildPMLRow(pml, pmlRows));
+                pmlRows.forEach(row => tbody.appendChild(buildPPLRow(row)));
+            });
+        }
+
+        // Baris Taskforce - dengan BADGE
+        function buildTaskforceRow(rows) {
+            const target = sumField(rows, 5);
+            const kirim = sumField(rows, 6);
+            const draft = sumField(rows, 7);
+            const rataRata = sumField(rows, 8);
+            const progres = target > 0 ? ((kirim + draft) / target) * 100 : 0;
+            const bbList = [...new Set(rows.map(r => r[53]).filter(v => v && v !== '-'))];
+
+            const tr = document.createElement('tr');
+            tr.className = 'row-taskforce';
+            tr.innerHTML = `
+                <td class="name-cell">
+                    <span class="badge bg-light text-primary badge-level">TASKFORCE</span>
+                    ${currentTaskforce}
+                </td>
+                <td>${target.toLocaleString('id-ID')}</td>
+                <td>${kirim.toLocaleString('id-ID')}</td>
+                <td>${draft.toLocaleString('id-ID')}</td>
+                <td>${rataRata.toLocaleString('id-ID')}</td>
+                <td>-</td>
+                <td>${makeProgressBar(progres)}</td>
+                <td>${bbList.length > 0 ? bbList.join(', ') : '-'}</td>
+            `;
+            return tr;
+        }
+
+        // Baris PML - dengan BADGE
+        function buildPMLRow(pmlName, rows) {
+            const target = sumField(rows, 5);
+            const kirim = sumField(rows, 6);
+            const draft = sumField(rows, 7);
+            const rataRata = sumField(rows, 8);
+            const progres = target > 0 ? ((kirim + draft) / target) * 100 : 0;
+            const bbList = [...new Set(rows.map(r => r[53]).filter(v => v && v !== '-'))];
+
+            const tr = document.createElement('tr');
+            tr.className = 'row-pml';
+            tr.innerHTML = `
+                <td class="name-cell">
+                    <span class="badge bg-primary badge-level">PML</span>
+                    ${pmlName}
+                </td>
+                <td>${target.toLocaleString('id-ID')}</td>
+                <td>${kirim.toLocaleString('id-ID')}</td>
+                <td>${draft.toLocaleString('id-ID')}</td>
+                <td>${rataRata.toLocaleString('id-ID')}</td>
+                <td>-</td>
+                <td>${makeProgressBar(progres)}</td>
+                <td>${bbList.length > 0 ? bbList.join(', ') : '-'}</td>
+            `;
+            return tr;
+        }
+
+        // Baris PPL - dengan BADGE
+        function buildPPLRow(row) {
+            const ppl = row[4] || '-';
+            const target = parseNumber(row[5]);
+            const kirim = parseNumber(row[6]);
+            const draft = parseNumber(row[7]);
+            const rataRata = row[8] || '0';
+            const persentase = row[9] ? row[9] + '%' : '0%';
+            const progres = target > 0 ? ((kirim + draft) / target) * 100 : 0;
+            const bb = row[53] || '-';
+
+            const tr = document.createElement('tr');
+            tr.className = 'row-ppl';
+            tr.innerHTML = `
+                <td class="name-cell">
+                    <span class="badge bg-secondary badge-level">PPL</span>
+                    ${ppl}
+                </td>
+                <td>${target.toLocaleString('id-ID')}</td>
+                <td>${kirim.toLocaleString('id-ID')}</td>
+                <td>${draft.toLocaleString('id-ID')}</td>
+                <td>${rataRata}</td>
+                <td>${persentase}</td>
+                <td>${makeProgressBar(progres)}</td>
+                <td>${bb}</td>
+            `;
+            return tr;
+        }
+
+        // Baris PPL Detail (dengan ID SUB SLS & KET GC)
+        function buildPPLDetailRow(row) {
+            const ppl = row[4] || '-';
+            const idSubSls = row[42] || '-'; // Kolom AQ = index 42
+            const target = parseNumber(row[5]);
+            const kirim = parseNumber(row[6]);
+            const draft = parseNumber(row[7]);
+            const rataRata = row[8] || '0';
+            const persentase = row[9] ? row[9] + '%' : '0%';
+            const progres = target > 0 ? ((kirim + draft) / target) * 100 : 0;
+            const ketGC = row[53] || '-'; // Kolom BB = index 53
+
+            const tr = document.createElement('tr');
+            tr.className = 'row-ppl';
+            tr.innerHTML = `
+                <td class="name-cell">
+                    <span class="badge bg-secondary badge-level">PPL</span>
+                    ${ppl}
+                </td>
+                <td><span class="id-sls">${idSubSls}</span></td>
+                <td>${target.toLocaleString('id-ID')}</td>
+                <td>${kirim.toLocaleString('id-ID')}</td>
+                <td>${draft.toLocaleString('id-ID')}</td>
+                <td>${rataRata}</td>
+                <td>${persentase}</td>
+                <td>${makeProgressBar(progres)}</td>
+                <td><span class="ket-gc">${ketGC}</span></td>
+            `;
+            return tr;
+        }
+
+        function resetAll() {
+            document.getElementById('inputNIP').value = '';
+            document.getElementById('sandboxSection').classList.add('hidden');
+            document.getElementById('pplDropdownSection').classList.add('hidden');
+            document.getElementById('tableCard').classList.add('hidden');
+            document.getElementById('nipError').classList.add('hidden');
+            clearSavedNIP();
+        }
+    </script>
+</body>
+</html>
